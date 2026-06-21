@@ -177,7 +177,7 @@ pub async fn compact_session(
     db: State<'_, DbState>,
     session_id: String,
 ) -> Result<AiSession, String> {
-    let (document_id, old_messages) = {
+    let (_document_id, old_messages) = {
         let conn = db.0.lock().map_err(|e| e.to_string())?;
 
         // Get document_id

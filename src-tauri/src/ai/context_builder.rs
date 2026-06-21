@@ -52,6 +52,7 @@ pub struct ContextPack {
 // ---------------------------------------------------------------------------
 
 const MAX_CHARS_CLOUD: i64 = 20000;
+#[allow(dead_code)]
 const MAX_CHARS_LOCAL: i64 = 8000;
 const NEARBY_PAGES: i64 = 1;
 

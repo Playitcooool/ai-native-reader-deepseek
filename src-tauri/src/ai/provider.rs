@@ -23,7 +23,7 @@ pub struct ChatResponse {
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct Choice {
+pub struct Choice {
     pub message: ChatMessage,
     #[allow(dead_code)]
     finish_reason: Option<String>,
