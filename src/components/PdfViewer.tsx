@@ -60,14 +60,11 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
         canvas.style.height = `${viewport.height / dpr}px`;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        ctx.scale(dpr, dpr);
         const renderTask = page.render({
           canvasContext: ctx,
-          viewport: page.getViewport({ scale }),
+          viewport,
         });
         renderTaskRef.current = renderTask;
-        await renderTask.promise;
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
         setPageProxy(page);
       } catch (err: any) {
         if (err?.name === "RenderingCancelledException") return;
