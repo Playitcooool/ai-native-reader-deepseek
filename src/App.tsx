@@ -59,23 +59,30 @@ function App() {
     };
   }, [handleOpenPdf]);
 
-  // Draggable splitters
+  // Draggable splitters — write to DOM directly during drag for zero-lag resize
   const [leftWidth, setLeftWidth] = useState(280);
   const [rightWidth, setRightWidth] = useState(340);
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ side: "left" | "right"; startX: number; startSize: number } | null>(null);
 
   const onMouseMove = useCallback((e: MouseEvent) => {
     const d = dragRef.current;
     if (!d) return;
     const dx = e.clientX - d.startX;
-    if (d.side === "left") {
-      setLeftWidth(Math.max(150, Math.min(500, d.startSize + dx)));
-    } else {
-      setRightWidth(Math.max(200, Math.min(600, d.startSize - dx)));
-    }
+    const clamped = Math.max(150, Math.min(d.side === "left" ? 500 : 600, d.startSize + (d.side === "left" ? dx : -dx)));
+    const el = d.side === "left" ? leftRef.current : rightRef.current;
+    if (el) el.style.width = `${clamped}px`;
   }, []);
 
   const onMouseUp = useCallback(() => {
+    const d = dragRef.current;
+    if (!d) { dragRef.current = null; return; }
+    const el = d.side === "left" ? leftRef.current : rightRef.current;
+    if (el) {
+      const w = parseInt(el.style.width, 10);
+      if (d.side === "left") setLeftWidth(w); else setRightWidth(w);
+    }
     dragRef.current = null;
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
@@ -92,7 +99,9 @@ function App() {
 
   const startResize = useCallback((side: "left" | "right", e: React.MouseEvent) => {
     e.preventDefault();
-    dragRef.current = { side, startX: e.clientX, startSize: side === "left" ? leftWidth : rightWidth };
+    const el = side === "left" ? leftRef.current : rightRef.current;
+    const w = el ? parseInt(el.style.width, 10) || (side === "left" ? leftWidth : rightWidth) : (side === "left" ? leftWidth : rightWidth);
+    dragRef.current = { side, startX: e.clientX, startSize: w };
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
   }, [leftWidth, rightWidth]);
@@ -100,7 +109,7 @@ function App() {
   return (
     <ToastProvider>
       <div className="app-layout">
-        <div className="sidebar-left" style={{ width: leftWidth, flex: "none" }}>
+        <div ref={leftRef} className="sidebar-left" style={{ width: leftWidth, flex: "none" }}>
           <LeftSidebar />
         </div>
         <div className="splitter" onMouseDown={(e) => startResize("left", e)} />
@@ -108,7 +117,7 @@ function App() {
           <CenterViewer />
         </div>
         <div className="splitter" onMouseDown={(e) => startResize("right", e)} />
-        <div className="sidebar-right" style={{ width: rightWidth, flex: "none" }}>
+        <div ref={rightRef} className="sidebar-right" style={{ width: rightWidth, flex: "none" }}>
           <AiSidebar />
         </div>
       </div>
