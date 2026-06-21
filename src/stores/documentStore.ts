@@ -27,6 +27,7 @@ interface DocumentState {
   zoom: number;
   tocNodes: TocNode[];
   activeTocNodeId: string | null;
+  isLoading: boolean;
   setDocuments: (docs: Document[]) => void;
   setCurrentDocument: (doc: Document | null) => void;
   setCurrentPage: (page: number) => void;
@@ -48,6 +49,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   zoom: 1.0,
   tocNodes: [],
   activeTocNodeId: null,
+  isLoading: false,
   setDocuments: (documents) => set({ documents }),
   setCurrentDocument: (doc) =>
     set({
@@ -62,34 +64,28 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   setActiveTocNodeId: (id) => set({ activeTocNodeId: id }),
   scrollToPage: (page) => set({ currentPage: page }),
   loadDocuments: async () => {
+    set({ isLoading: true });
     try {
       const docs = await invoke<Document[]>("get_documents");
-      set({ documents: docs });
-    } catch (err) {
-      console.error("Failed to load documents:", err);
+      set({ documents: docs, isLoading: false });
+    } catch (e) {
+      set({ isLoading: false });
+      throw e;
     }
   },
   loadToc: async (documentId) => {
-    try {
-      const nodes = await invoke<TocNode[]>("get_toc_tree", { documentId });
-      set({ tocNodes: nodes });
-    } catch (err) {
-      console.error("Failed to load TOC:", err);
-    }
+    const nodes = await invoke<TocNode[]>("get_toc_tree", { documentId });
+    set({ tocNodes: nodes });
   },
   handleOpenPdf: async () => {
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: "PDF", extensions: ["pdf"] }],
-      });
-      if (!selected) return;
-      const doc = await invoke<Document>("import_pdf", { filePath: selected });
-      get().setCurrentDocument(doc);
-      const docs = await invoke<Document[]>("get_documents");
-      get().setDocuments(docs);
-    } catch (err) {
-      console.error("Failed to open PDF:", err);
-    }
+    const selected = await open({
+      multiple: false,
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+    });
+    if (!selected) return;
+    const doc = await invoke<Document>("import_pdf", { filePath: selected });
+    get().setCurrentDocument(doc);
+    const docs = await invoke<Document[]>("get_documents");
+    get().setDocuments(docs);
   },
 }));

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useToast } from "../../components/Toast";
 
 interface SelectionMenuProps {
   selectedText: string;
@@ -21,18 +22,36 @@ export default function SelectionMenu({
   onExplain,
 }: SelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const firstBtnRef = useRef<HTMLButtonElement>(null);
   const [saved, setSaved] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const { addToast } = useToast();
 
   useEffect(() => {
+    firstBtnRef.current?.focus();
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); }
+    };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, [onClose]);
+
+  const toastSaved = useRef<ReturnType<typeof setTimeout>>();
+
+  const showSaved = () => {
+    setSaved(true);
+    clearTimeout(toastSaved.current);
+    toastSaved.current = setTimeout(() => onClose(), 1500);
+  };
 
   const handleSaveHighlight = async () => {
     try {
@@ -45,9 +64,9 @@ export default function SelectionMenu({
           anchor: anchor ? JSON.stringify(anchor) : null,
         },
       });
-      setSaved(true);
+      showSaved();
     } catch (err) {
-      console.error("Failed to save highlight:", err);
+      addToast({ type: "error", message: "Failed to save highlight." });
     }
   };
 
@@ -64,17 +83,21 @@ export default function SelectionMenu({
           anchor: anchor ? JSON.stringify(anchor) : null,
         },
       });
-      setSaved(true);
+      showSaved();
       setNoteText("");
     } catch (err) {
-      console.error("Failed to save note:", err);
+      addToast({ type: "error", message: "Failed to save note." });
     }
   };
+
+  useEffect(() => () => clearTimeout(toastSaved.current), []);
 
   if (saved) {
     return (
       <div
         ref={menuRef}
+        role="status"
+        aria-live="polite"
         style={{
           position: "fixed",
           top: Math.max(8, (position?.y ?? 0) - 60),
@@ -93,9 +116,23 @@ export default function SelectionMenu({
     );
   }
 
+  const handleMenuKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") { onClose(); return; }
+    if (e.key !== "Tab") return;
+    const focusable = menuRef.current?.querySelectorAll<HTMLElement>("button, input");
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+
   return (
     <div
       ref={menuRef}
+      role="menu"
+      aria-label="Text selection actions"
+      onKeyDown={handleMenuKey}
       style={{
         position: "fixed",
         top: Math.max(8, (position?.y ?? 0) - 48),
@@ -113,6 +150,8 @@ export default function SelectionMenu({
       }}
     >
       <button
+        ref={firstBtnRef}
+        role="menuitem"
         onClick={() => { onExplain(); onClose(); }}
         style={{
           padding: "4px 10px",
@@ -127,6 +166,7 @@ export default function SelectionMenu({
         Explain
       </button>
       <button
+        role="menuitem"
         onClick={handleSaveHighlight}
         style={{
           padding: "4px 10px",
@@ -157,6 +197,7 @@ export default function SelectionMenu({
         />
         {noteText && (
           <button
+            role="menuitem"
             onClick={handleSaveNote}
             style={{
               padding: "4px 8px",

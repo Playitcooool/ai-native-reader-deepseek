@@ -17,30 +17,30 @@ export interface Annotation {
 
 interface NotesState {
   annotations: Annotation[];
+  isLoading: boolean;
   loadAnnotations: (documentId: string, pageNumber?: number) => Promise<void>;
   deleteAnnotation: (id: string) => Promise<void>;
 }
 
 export const useNotesStore = create<NotesState>((set) => ({
   annotations: [],
+  isLoading: false,
   loadAnnotations: async (documentId, pageNumber) => {
+    set({ isLoading: true });
     try {
       const result = await invoke<Annotation[]>("get_annotations", {
         input: { documentId, pageNumber: pageNumber ?? null },
       });
-      set({ annotations: result });
-    } catch (err) {
-      console.error("Failed to load annotations:", err);
+      set({ annotations: result, isLoading: false });
+    } catch (e) {
+      set({ isLoading: false });
+      throw e;
     }
   },
   deleteAnnotation: async (id) => {
-    try {
-      await invoke("delete_annotation", { annotationId: id });
-      set((state) => ({
-        annotations: state.annotations.filter((a) => a.id !== id),
-      }));
-    } catch (err) {
-      console.error("Failed to delete annotation:", err);
-    }
+    await invoke("delete_annotation", { annotationId: id });
+    set((state) => ({
+      annotations: state.annotations.filter((a) => a.id !== id),
+    }));
   },
 }));

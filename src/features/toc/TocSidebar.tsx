@@ -47,9 +47,10 @@ function TocItem({
   const isActive = activeNodeId === node.id;
 
   return (
-    <div>
+    <div role="treeitem" aria-expanded={children.length > 0} aria-current={isActive ? "page" : undefined}>
       <button
         onClick={() => onNavigate(node.start_page)}
+        aria-current={isActive ? "page" : undefined}
         style={{
           display: "block",
           width: "100%",
@@ -102,7 +103,7 @@ export default function TocSidebar({
   }
 
   return (
-    <div>
+    <div role="tree" aria-label="Table of contents">
       {roots.map((root) => (
         <TocItem
           key={root.id}

@@ -65,6 +65,9 @@ export class PageExtractionQueue {
   private processing = false;
   private destroyed = false;
   private extracted = new Set<number>();
+  private totalPages = 0;
+  /** Optional progress callback: (extractedCount, totalPages) => void */
+  onProgress: ((extracted: number, total: number) => void) | null = null;
 
   constructor(
     pdf: any,
@@ -95,6 +98,7 @@ export class PageExtractionQueue {
    * Set the current page and enqueue nearby pages with appropriate priorities.
    */
   setCurrentPage(pageNumber: number, totalPages: number): void {
+    this.totalPages = totalPages;
     // Priority 0: current page
     this.addPage(pageNumber, 0);
     // Priority 1: previous and next
@@ -139,6 +143,7 @@ export class PageExtractionQueue {
         if (this.destroyed) return;
         this.extracted.add(pageNumber);
         await this.saveFn(this.documentId, pageNumber, result.text);
+        this.onProgress?.(this.extracted.size, this.totalPages);
       } catch (err) {
         if (this.destroyed) return;
         console.warn(`Failed to extract page ${pageNumber}:`, err);

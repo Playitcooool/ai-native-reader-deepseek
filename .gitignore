@@ -5,3 +5,4 @@ src-tauri/node_modules/
 .DS_Store
 *.log
 .vite/
+dist/index.html

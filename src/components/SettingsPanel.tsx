@@ -91,8 +91,8 @@ export default function SettingsPanel() {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <h3 style={{ fontSize: 14, fontWeight: 600 }}>AI Provider</h3>
 
-      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Provider Type</label>
-      <select
+      <label htmlFor="provider-type" style={{ fontSize: 12, color: "var(--text-secondary)" }}>Provider Type</label>
+      <select id="provider-type"
         value={providerType}
         onChange={(e) => setProviderType(e.target.value)}
         style={{ padding: "6px 8px", border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, background: "var(--bg-primary)" }}
@@ -102,16 +102,16 @@ export default function SettingsPanel() {
         <option value="ollama">Ollama</option>
       </select>
 
-      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Base URL</label>
-      <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1"
+      <label htmlFor="base-url" style={{ fontSize: 12, color: "var(--text-secondary)" }}>Base URL</label>
+      <input id="base-url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1"
         style={{ padding: "6px 8px", border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
 
-      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>API Key</label>
-      <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..."
+      <label htmlFor="api-key" style={{ fontSize: 12, color: "var(--text-secondary)" }}>API Key</label>
+      <input id="api-key" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..."
         style={{ padding: "6px 8px", border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
 
-      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Model</label>
-      <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini"
+      <label htmlFor="model" style={{ fontSize: 12, color: "var(--text-secondary)" }}>Model</label>
+      <input id="model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini"
         style={{ padding: "6px 8px", border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
 
       <div style={{ display: "flex", gap: 8 }}>

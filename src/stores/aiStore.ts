@@ -97,9 +97,6 @@ export const useAiStore = create<AiState>((set, get) => ({
       }));
 
       return result.answer_md;
-    } catch (err) {
-      console.error("AI workflow failed:", err);
-      return null;
     } finally {
       set({ isGenerating: false });
     }

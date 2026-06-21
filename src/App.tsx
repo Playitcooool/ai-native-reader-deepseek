@@ -2,7 +2,7 @@ import "./App.css";
 import LeftSidebar from "./components/LeftSidebar";
 import CenterViewer from "./components/CenterViewer";
 import AiSidebar from "./components/AiSidebar";
-import { ToastProvider } from "./components/Toast";
+import { ToastProvider, useToast } from "./components/Toast";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useDocumentStore } from "./stores/documentStore";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,6 +12,7 @@ import type { ProviderSettings } from "./stores/settingsStore";
 import type { Document } from "./stores/documentStore";
 
 function App() {
+  const { addToast } = useToast();
   const setSettings = useSettingsStore((s) => s.setSettings);
   const handleOpenPdf = useDocumentStore((s) => s.handleOpenPdf);
   const setCurrentDocument = useDocumentStore((s) => s.setCurrentDocument);
@@ -28,8 +29,8 @@ function App() {
           setSettings(settings);
         }
       })
-      .catch(console.error);
-  }, [setSettings]);
+      .catch(() => addToast({ type: "error", message: "Failed to load provider settings." }));
+  }, [setSettings, addToast]);
 
   // Auto-restore last opened document on startup
   useEffect(() => {
@@ -46,18 +47,18 @@ function App() {
           }
         }
       })
-      .catch(console.error);
-  }, [setCurrentDocument]);
+      .catch(() => addToast({ type: "error", message: "Failed to restore last document." }));
+  }, [setCurrentDocument, addToast]);
 
   // Listen for native menu File > Open PDF (Cmd+O)
   useEffect(() => {
     const unlisten = listen("menu-open-pdf", () => {
-      handleOpenPdf();
+      handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." }));
     });
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [handleOpenPdf]);
+  }, [handleOpenPdf, addToast]);
 
   // Draggable splitters — write to DOM directly during drag for zero-lag resize
   const [leftWidth, setLeftWidth] = useState(280);
@@ -116,22 +117,24 @@ function App() {
           className={`sidebar-left${leftCollapsed ? " collapsed" : ""}`}
           style={{ width: leftCollapsed ? 36 : leftWidth, flex: "none" }}
         >
-          <button className="collapse-btn collapse-left" onClick={() => setLeftCollapsed(!leftCollapsed)}>
+          <button aria-label={leftCollapsed ? "Expand left sidebar" : "Collapse left sidebar"} className="collapse-btn collapse-left" onClick={() => setLeftCollapsed(!leftCollapsed)}>
             {leftCollapsed ? "▶" : "◀"}
           </button>
           {!leftCollapsed && <LeftSidebar />}
         </div>
-        {!leftCollapsed && <div className="splitter" onMouseDown={(e) => startResize("left", e)} />}
+        {!leftCollapsed && <div className="splitter" role="separator" aria-valuenow={leftWidth} aria-valuemin={150} aria-valuemax={500} tabIndex={0} aria-label="Resize left sidebar"
+          onMouseDown={(e) => startResize("left", e)} onKeyDown={(e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); const el = leftRef.current; if (!el) return; const step = e.key === "ArrowLeft" ? -10 : 10; const w = Math.max(150, Math.min(500, (parseInt(el.style.width, 10) || leftWidth) + step)); el.style.width = `${w}px`; setLeftWidth(w); } }} />}
         <div className="center-viewer">
           <CenterViewer />
         </div>
-        {!rightCollapsed && <div className="splitter" onMouseDown={(e) => startResize("right", e)} />}
+        {!rightCollapsed && <div className="splitter" role="separator" aria-valuenow={rightWidth} aria-valuemin={200} aria-valuemax={600} tabIndex={0} aria-label="Resize right sidebar"
+          onMouseDown={(e) => startResize("right", e)} onKeyDown={(e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); const el = rightRef.current; if (!el) return; const cur = parseInt(el.style.width, 10) || rightWidth; const w = Math.max(200, Math.min(600, cur + (e.key === "ArrowLeft" ? 10 : -10))); el.style.width = `${w}px`; setRightWidth(w); } }} />}
         <div
           ref={rightRef}
           className={`sidebar-right${rightCollapsed ? " collapsed" : ""}`}
           style={{ width: rightCollapsed ? 36 : rightWidth, flex: "none" }}
         >
-          <button className="collapse-btn collapse-right" onClick={() => setRightCollapsed(!rightCollapsed)}>
+          <button aria-label={rightCollapsed ? "Expand right sidebar" : "Collapse right sidebar"} className="collapse-btn collapse-right" onClick={() => setRightCollapsed(!rightCollapsed)}>
             {rightCollapsed ? "◀" : "▶"}
           </button>
           {!rightCollapsed && <AiSidebar />}

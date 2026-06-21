@@ -3,7 +3,7 @@ import { useDocumentStore } from "../stores/documentStore";
 import { useAiStore } from "../stores/aiStore";
 import ReactMarkdown from "react-markdown";
 import { invoke } from "@tauri-apps/api/core";
-// ponytail: citationParser imported for future structured citation parsing
+import { useToast } from "./Toast";
 
 export default function AiSidebar() {
   const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
@@ -14,6 +14,7 @@ export default function AiSidebar() {
   const listRef = useRef<HTMLDivElement>(null);
   const [savedNotes, setSavedNotes] = useState<Set<string>>(new Set());
   const [showRange, setShowRange] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (listRef.current) {
@@ -25,49 +26,65 @@ export default function AiSidebar() {
     if (!currentDocument) return;
     const sel = window.getSelection()?.toString().trim();
     if (!sel) return;
-    await runWorkflow({
-      documentId: currentDocument.id,
-      documentTitle: currentDocument.title ?? undefined,
-      mode: "selection_explain",
-      pageNumber: currentPage,
-      selectedText: sel,
-    });
-  }, [currentDocument, currentPage, runWorkflow]);
+    try {
+      await runWorkflow({
+        documentId: currentDocument.id,
+        documentTitle: currentDocument.title ?? undefined,
+        mode: "selection_explain",
+        pageNumber: currentPage,
+        selectedText: sel,
+      });
+    } catch {
+      addToast({ type: "error", message: "AI explanation failed." });
+    }
+  }, [currentDocument, currentPage, runWorkflow, addToast]);
 
   const handleSummarizePage = useCallback(async () => {
     if (!currentDocument) return;
-    await runWorkflow({
-      documentId: currentDocument.id,
-      documentTitle: currentDocument.title ?? undefined,
-      mode: "page_summary",
-      pageNumber: currentPage,
-    });
-  }, [currentDocument, currentPage, runWorkflow]);
+    try {
+      await runWorkflow({
+        documentId: currentDocument.id,
+        documentTitle: currentDocument.title ?? undefined,
+        mode: "page_summary",
+        pageNumber: currentPage,
+      });
+    } catch {
+      addToast({ type: "error", message: "AI summarization failed." });
+    }
+  }, [currentDocument, currentPage, runWorkflow, addToast]);
 
   const handleSummarizeRange = useCallback(async () => {
     if (!currentDocument || !rangeStart || !rangeEnd) return;
-    await runWorkflow({
-      documentId: currentDocument.id,
-      documentTitle: currentDocument.title ?? undefined,
-      mode: "range_summary",
-      pageNumber: currentPage,
-      startPage: parseInt(rangeStart),
-      endPage: parseInt(rangeEnd),
-    });
-  }, [currentDocument, currentPage, rangeStart, rangeEnd, runWorkflow]);
+    try {
+      await runWorkflow({
+        documentId: currentDocument.id,
+        documentTitle: currentDocument.title ?? undefined,
+        mode: "range_summary",
+        pageNumber: currentPage,
+        startPage: parseInt(rangeStart),
+        endPage: parseInt(rangeEnd),
+      });
+    } catch {
+      addToast({ type: "error", message: "AI range summarization failed." });
+    }
+  }, [currentDocument, currentPage, rangeStart, rangeEnd, runWorkflow, addToast]);
 
   const handleAskQuestion = useCallback(async () => {
     if (!currentDocument || !input.trim()) return;
     const question = input.trim();
     setInput("");
-    await runWorkflow({
-      documentId: currentDocument.id,
-      documentTitle: currentDocument.title ?? undefined,
-      mode: "chapter_qa",
-      pageNumber: currentPage,
-      question,
-    });
-  }, [currentDocument, currentPage, input, runWorkflow]);
+    try {
+      await runWorkflow({
+        documentId: currentDocument.id,
+        documentTitle: currentDocument.title ?? undefined,
+        mode: "chapter_qa",
+        pageNumber: currentPage,
+        question,
+      });
+    } catch {
+      addToast({ type: "error", message: "AI request failed." });
+    }
+  }, [currentDocument, currentPage, input, runWorkflow, addToast]);
 
   // Save AI answer as note
   const handleSaveAsNote = useCallback(
@@ -85,7 +102,7 @@ export default function AiSidebar() {
         });
         setSavedNotes((prev) => new Set(prev).add(msg.id));
       } catch (err) {
-        console.error("Failed to save note:", err);
+        addToast({ type: "error", message: "Failed to save note." });
       }
     },
     [currentDocument, currentPage, savedNotes],
@@ -178,7 +195,7 @@ export default function AiSidebar() {
           Explain
         </button>
         {lastWorkflowInput && !isGenerating && (
-          <button onClick={retryLastWorkflow}
+          <button onClick={() => retryLastWorkflow().catch(() => addToast({ type: "error", message: "AI retry failed." }))}
             style={{ padding: "2px 6px", fontSize: 11, background: "transparent", color: "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: 3, cursor: "pointer" }}>
             ↻ Retry
           </button>
@@ -206,7 +223,7 @@ export default function AiSidebar() {
       )}
 
       {/* Messages */}
-      <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "8px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div ref={listRef} role="log" aria-live="polite" aria-label="AI conversation" style={{ flex: 1, overflowY: "auto", padding: "8px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
         {messages.length === 0 && (
           <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
             <p>AI answers appear here.</p>
@@ -237,7 +254,7 @@ export default function AiSidebar() {
                 </button>
               </div>
             )}
-            {msg.context_snapshot_json && (
+            {import.meta.env.DEV && msg.context_snapshot_json && (
               <details style={{ marginTop: 4, fontSize: 10, color: "var(--text-muted)" }}>
                 <summary style={{ cursor: "pointer" }}>Context</summary>
                 <pre style={{ marginTop: 2, padding: 4, background: "var(--bg-tertiary)", borderRadius: 3, maxHeight: 120, overflow: "auto", fontSize: 10 }}>

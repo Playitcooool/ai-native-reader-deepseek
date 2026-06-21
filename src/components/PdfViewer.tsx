@@ -11,6 +11,8 @@ import { PageExtractionQueue } from "../features/pdf/pdfTextExtraction";
 import SelectionMenu from "../features/pdf/SelectionMenu";
 import PageView from "../features/pdf/PageView";
 import { useVisibleRange } from "../features/pdf/useVisibleRange";
+import { useToast } from "./Toast";
+import ShortcutsModal from "./ShortcutsModal";
 
 interface PdfViewerProps {
   filePath: string;
@@ -43,6 +45,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
+  const { addToast } = useToast();
   const extractionRef = useRef<PageExtractionQueue | null>(null);
   const progScrollRef = useRef(false);
   const pageDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,7 +57,10 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ pageNum: number; context: string }>>([]);
   const [currentResultIdx, setCurrentResultIdx] = useState(0);
+  const [extractionDone, setExtractionDone] = useState(0);
+  const extractionTotal = useRef(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchProgress, setSearchProgress] = useState(0);
   const searchCancelledRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -157,6 +163,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           (docId, pageNum, text) => invoke("save_page_text", { documentId: docId, pageNumber: pageNum, text }),
           (docId, pageNum) => invoke("mark_page_text_failed", { documentId: docId, pageNumber: pageNum }),
         );
+        eq.onProgress = (done, total) => { setExtractionDone(done); extractionTotal.current = total; };
         extractionRef.current = eq;
         eq.setCurrentPage(1, pdf.numPages);
         setTimeout(() => eq.enqueueAll(pdf.numPages), 2000);
@@ -223,14 +230,18 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
   const handleExplain = useCallback(async () => {
     if (!currentDocument || !selectionText) return;
     clearSelection();
-    await runWorkflow({
-      documentId: currentDocument.id,
-      documentTitle: currentDocument.title ?? undefined,
-      mode: "selection_explain",
-      pageNumber: currentPage,
-      selectedText: selectionText,
-    });
-  }, [currentDocument, selectionText, currentPage, runWorkflow, clearSelection]);
+    try {
+      await runWorkflow({
+        documentId: currentDocument.id,
+        documentTitle: currentDocument.title ?? undefined,
+        mode: "selection_explain",
+        pageNumber: currentPage,
+        selectedText: selectionText,
+      });
+    } catch {
+      addToast({ type: "error", message: "AI explanation failed." });
+    }
+  }, [currentDocument, selectionText, currentPage, runWorkflow, clearSelection, addToast]);
 
   // Scroll to page (used by keyboard nav)
   const goToPage = useCallback(
@@ -315,6 +326,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     if (!pdf || !query.trim()) { setSearchResults([]); return; }
     searchCancelledRef.current = false;
     setIsSearching(true);
+    setSearchProgress(1);
     const results: Array<{ pageNum: number; context: string }> = [];
     const q = query.toLowerCase();
 
@@ -336,7 +348,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
         }
       } catch { /* skip unrenderable pages */ }
       // Yield every 3 pages to keep UI responsive for long PDFs
-      if (i % 3 === 0) await new Promise((r) => setTimeout(r, 0));
+      if (i % 3 === 0) { setSearchProgress(i); await new Promise((r) => setTimeout(r, 0)); }
     }
 
     if (!searchCancelledRef.current) {
@@ -389,11 +401,11 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           fontSize: 13, flexShrink: 0,
         }}
       >
-        <button onClick={() => { handleOpenPdf(); clearSelection(); }} title="Open PDF (Cmd+O)" style={{ fontWeight: 600 }}>
+        <button onClick={() => { handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." })); clearSelection(); }} title="Open PDF (Cmd+O)" style={{ fontWeight: 600 }}>
           📂 Open
         </button>
         <span style={{ color: "var(--border-color)" }}>|</span>
-        <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>◀ Prev</button>
+        <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page">◀ Prev</button>
         <span>
           Page{" "}
           <input
@@ -403,17 +415,22 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           />{" "}
           / {pageCount || "?"}
         </span>
-        <button onClick={() => goToPage(currentPage + 1)} disabled={!pdfRef.current || currentPage >= pageCount}>Next ▶</button>
-        <button onClick={handleToggleSearch} title="Search (Ctrl+F)" style={{ opacity: showSearch ? 1 : 0.6 }}>
+        <button onClick={() => goToPage(currentPage + 1)} disabled={!pdfRef.current || currentPage >= pageCount} aria-label="Next page">Next ▶</button>
+        {extractionDone > 0 && extractionDone < extractionTotal.current && (
+          <span style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+            Indexing {extractionDone}/{extractionTotal.current}
+          </span>
+        )}
+        <button onClick={handleToggleSearch} title="Search (Ctrl+F)" aria-label="Toggle search" style={{ opacity: showSearch ? 1 : 0.6 }}>
           🔍
         </button>
-        <button onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Toggle dark/light theme">
+        <button onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Toggle dark/light theme" aria-label="Toggle theme">
           {theme === "light" ? "🌙" : "☀️"}
         </button>
         <span style={{ flex: 1 }} />
-        <button onClick={() => handleSetZoom(zoom - 0.25)} disabled={zoom <= 0.25}>−</button>
+        <button onClick={() => handleSetZoom(zoom - 0.25)} disabled={zoom <= 0.25} aria-label="Zoom out">−</button>
         <span>{Math.round(zoom * 100)}%</span>
-        <button onClick={() => handleSetZoom(zoom + 0.25)} disabled={zoom >= 4.0}>+</button>
+        <button onClick={() => handleSetZoom(zoom + 0.25)} disabled={zoom >= 4.0} aria-label="Zoom in">+</button>
         <button onClick={() => handleSetZoom(1.0)}>Reset</button>
       </div>
 
@@ -438,23 +455,23 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           />
           <button onClick={() => performSearch(searchQuery)} disabled={isSearching || !searchQuery.trim()}
             style={{ padding: "4px 10px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 3, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-            {isSearching ? "…" : "Search"}
+            {isSearching ? `Searching ${searchProgress}/${pageCount}` : "Search"}
           </button>
           {!isSearching && searchResults.length > 0 && (
             <>
               <span style={{ color: "var(--text-secondary)", fontSize: 12, whiteSpace: "nowrap" }}>
                 {currentResultIdx + 1} / {searchResults.length}
               </span>
-              <button onClick={() => goToSearchResult(currentResultIdx - 1)} disabled={currentResultIdx <= 0}
+              <button onClick={() => goToSearchResult(currentResultIdx - 1)} disabled={currentResultIdx <= 0} aria-label="Previous search result"
                 style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>◀</button>
-              <button onClick={() => goToSearchResult(currentResultIdx + 1)} disabled={currentResultIdx >= searchResults.length - 1}
+              <button onClick={() => goToSearchResult(currentResultIdx + 1)} disabled={currentResultIdx >= searchResults.length - 1} aria-label="Next search result"
                 style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>▶</button>
             </>
           )}
           {!isSearching && searchQuery && searchResults.length === 0 && (
             <span style={{ color: "var(--text-muted)", fontSize: 12 }}>No results</span>
           )}
-          <button onClick={handleToggleSearch} style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>✕</button>
+          <button onClick={handleToggleSearch} aria-label="Close search" style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>✕</button>
         </div>
       )}
 
@@ -515,41 +532,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
       )}
 
       {/* Keyboard shortcut help */}
-      {showShortcuts && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 9999,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(0,0,0,0.4)",
-          }}
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--bg-primary)", color: "var(--text-primary)",
-              borderRadius: 8, padding: "20px 24px",
-              minWidth: 280, maxWidth: 360,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
-              fontSize: 13,
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14 }}>Keyboard Shortcuts</div>
-            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>← →</span><span>Previous / Next page</span>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>PgUp PgDn</span><span>Previous / Next page</span>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>+ − 0</span><span>Zoom in / out / reset</span>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>E</span><span>Explain selection</span>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>Esc</span><span>Clear selection</span>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>⌘O</span><span>Open PDF</span>
-              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>?</span><span>Toggle this help</span>
-            </div>
-            <div style={{ marginTop: 12, fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
-              Click anywhere outside to close
-            </div>
-          </div>
-        </div>
-      )}
+      {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
     </div>
   );
 }
