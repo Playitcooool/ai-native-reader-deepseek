@@ -51,14 +51,22 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
       }
       try {
         const page: PDFPageProxy = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale });
-        canvas.height = viewport.height;
+        const dpr = window.devicePixelRatio || 1;
+        const viewport = page.getViewport({ scale: scale * dpr });
         canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = `${viewport.width / dpr}px`;
+        canvas.style.height = `${viewport.height / dpr}px`;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        const renderTask = page.render({ canvasContext: ctx, viewport });
+        ctx.scale(dpr, dpr);
+        const renderTask = page.render({
+          canvasContext: ctx,
+          viewport: page.getViewport({ scale }),
+        });
         renderTaskRef.current = renderTask;
         await renderTask.promise;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         setPageProxy(page);
       } catch (err: any) {
         if (err?.name === "RenderingCancelledException") return;
