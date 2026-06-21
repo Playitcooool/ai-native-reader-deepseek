@@ -133,7 +133,8 @@ export default function LeftSidebar() {
       </div>
       <div className="tab-content">
         {tabs.map((t) => (
-          <div key={t.id} role="tabpanel" id={`tabpanel-${t.id}`} aria-labelledby={`tab-${t.id}`} hidden={activeTab !== t.id}>
+          <div key={t.id} role="tabpanel" id={`tabpanel-${t.id}`} aria-labelledby={`tab-${t.id}`} hidden={activeTab !== t.id}
+            style={activeTab === t.id ? { height: "100%", overflowY: "auto" } : undefined}>
             {t.id === "recent" && (
           <div>
             {docsLoading ? (
