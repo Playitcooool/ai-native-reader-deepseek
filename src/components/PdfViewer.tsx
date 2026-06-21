@@ -5,6 +5,7 @@ import "../pdfjs";
 import { useDocumentStore } from "../stores/documentStore";
 import { useAiStore } from "../stores/aiStore";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { extractToc, type TocNodeInput } from "../features/toc/tocTree";
 import { PageExtractionQueue } from "../features/pdf/pdfTextExtraction";
 import PdfTextLayer from "../features/pdf/PdfTextLayer";
@@ -173,6 +174,24 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     window.getSelection()?.removeAllRanges();
   }, []);
 
+  // Open another PDF
+  const handleOpenPdf = useCallback(async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+      if (!selected) return;
+      const doc = await invoke<import("../stores/documentStore").Document>("import_pdf", { filePath: selected });
+      useDocumentStore.getState().setCurrentDocument(doc);
+      const docs = await invoke<import("../stores/documentStore").Document[]>("get_documents");
+      useDocumentStore.getState().setDocuments(docs);
+      clearSelection();
+    } catch (err) {
+      console.error("Failed to open PDF:", err);
+    }
+  }, [clearSelection]);
+
   // Handle Explain action
   const handleExplain = useCallback(async () => {
     if (!currentDocument || !selectionText) return;
@@ -248,6 +267,10 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           fontSize: 13, flexShrink: 0,
         }}
       >
+        <button onClick={handleOpenPdf} title="Open PDF (Cmd+O)" style={{ fontWeight: 600 }}>
+          📂 Open
+        </button>
+        <span style={{ color: "var(--border-color)" }}>|</span>
         <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>◀ Prev</button>
         <span>
           Page{" "}

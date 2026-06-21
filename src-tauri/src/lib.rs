@@ -4,7 +4,17 @@ pub mod db;
 
 use commands::settings::DbState;
 use std::sync::Mutex;
+use tauri::Emitter;
 use tauri::Manager;
+use tauri::menu::{MenuBuilder, SubmenuBuilder, MenuItemBuilder};
+
+fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
+    if event.id() == "open_pdf" {
+        if let Some(window) = app.get_webview_window("main") {
+            window.emit("menu-open-pdf", ()).ok();
+        }
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -22,8 +32,25 @@ pub fn run() {
             let conn =
                 db::migrations::initialize_database(&db_path).expect("failed to initialize database");
             app.manage(DbState(Mutex::new(conn)));
+
+            // Build native menu: File > Open PDF (Cmd+O), Quit
+            let open = MenuItemBuilder::with_id("open_pdf", "Open PDF…")
+                .accelerator("CmdOrCtrl+O")
+                .build(app)?;
+            let quit = MenuItemBuilder::with_id("quit", "Quit")
+                .accelerator("CmdOrCtrl+Q")
+                .build(app)?;
+            let file_menu = SubmenuBuilder::new(app, "File")
+                .item(&open)
+                .separator()
+                .item(&quit)
+                .build()?;
+            let menu = MenuBuilder::new(app).item(&file_menu).build()?;
+            app.set_menu(menu)?;
+
             Ok(())
         })
+        .on_menu_event(handle_menu_event)
         .invoke_handler(tauri::generate_handler![
             commands::documents::import_pdf,
             commands::documents::get_documents,
