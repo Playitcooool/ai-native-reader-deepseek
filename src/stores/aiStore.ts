@@ -16,6 +16,7 @@ interface AiState {
   messages: AiMessage[];
   sessionId: string | null;
   isGenerating: boolean;
+  lastWorkflowInput: Record<string, any> | null;
   setSessionId: (id: string | null) => void;
   addMessage: (msg: AiMessage) => void;
   setMessages: (msgs: AiMessage[]) => void;
@@ -30,6 +31,7 @@ interface AiState {
     endPage?: number;
     question?: string;
   }) => Promise<string | null>;
+  retryLastWorkflow: () => Promise<string | null>;
   loadSessionMessages: (sessionId: string) => Promise<void>;
 }
 
@@ -37,13 +39,14 @@ export const useAiStore = create<AiState>((set, get) => ({
   messages: [],
   sessionId: null,
   isGenerating: false,
+  lastWorkflowInput: null,
   setSessionId: (id) => set({ sessionId: id }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   setMessages: (msgs) => set({ messages: msgs }),
   setGenerating: (g) => set({ isGenerating: g }),
 
   runWorkflow: async (input) => {
-    set({ isGenerating: true });
+    set({ isGenerating: true, lastWorkflowInput: input as Record<string, any> });
     try {
       const result = await invoke<{
         message_id: string;
@@ -100,6 +103,12 @@ export const useAiStore = create<AiState>((set, get) => ({
     } finally {
       set({ isGenerating: false });
     }
+  },
+
+  retryLastWorkflow: async () => {
+    const last = get().lastWorkflowInput;
+    if (!last) return null;
+    return get().runWorkflow(last as any);
   },
 
   loadSessionMessages: async (sessionId) => {

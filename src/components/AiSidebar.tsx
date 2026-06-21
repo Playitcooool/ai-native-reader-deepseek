@@ -7,7 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export default function AiSidebar() {
   const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
-  const { messages, isGenerating, runWorkflow } = useAiStore();
+  const { messages, isGenerating, runWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
@@ -177,6 +177,12 @@ export default function AiSidebar() {
           style={{ padding: "2px 6px", fontSize: 11, background: "var(--success-color)", color: "#fff", border: "none", borderRadius: 3, cursor: "pointer", fontWeight: 500 }}>
           Explain
         </button>
+        {lastWorkflowInput && !isGenerating && (
+          <button onClick={retryLastWorkflow}
+            style={{ padding: "2px 6px", fontSize: 11, background: "transparent", color: "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: 3, cursor: "pointer" }}>
+            ↻ Retry
+          </button>
+        )}
       </div>
 
       {/* Page range (collapsible) */}

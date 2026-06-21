@@ -50,6 +50,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
 
   // Search state
   const [showSearch, setShowSearch] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ pageNum: number; context: string }>>([]);
   const [currentResultIdx, setCurrentResultIdx] = useState(0);
@@ -265,6 +266,12 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
       // Let system shortcuts (Cmd+C/V/A, etc.) pass through
       if (e.metaKey || e.ctrlKey) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // When shortcut help is open, only allow Escape or ? to close it
+      if (showShortcuts) {
+        if (e.key === "Escape" || e.key === "?") { setShowShortcuts(false); }
+        e.preventDefault();
+        return;
+      }
       if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); goToPage(currentPage - 1); }
       if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); goToPage(currentPage + 1); }
       if (e.key === "+" || e.key === "=") { e.preventDefault(); handleSetZoom(zoom + 0.25); }
@@ -274,11 +281,12 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
         e.preventDefault();
         handleExplain();
       }
-      if (e.key === "Escape") { clearSelection(); }
+      if (e.key === "Escape") { clearSelection(); setShowShortcuts(false); }
+      if (e.key === "?") { setShowShortcuts((p) => !p); }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [currentPage, zoom, goToPage, handleSetZoom, clearSelection, selectionText, handleExplain]);
+  }, [currentPage, zoom, goToPage, handleSetZoom, clearSelection, selectionText, handleExplain, showShortcuts]);
 
   // Debounced zoom persistence
   useEffect(() => {
@@ -504,6 +512,43 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           onClose={clearSelection}
           onExplain={handleExplain}
         />
+      )}
+
+      {/* Keyboard shortcut help */}
+      {showShortcuts && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.4)",
+          }}
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--bg-primary)", color: "var(--text-primary)",
+              borderRadius: 8, padding: "20px 24px",
+              minWidth: 280, maxWidth: 360,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+              fontSize: 13,
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14 }}>Keyboard Shortcuts</div>
+            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>← →</span><span>Previous / Next page</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>PgUp PgDn</span><span>Previous / Next page</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>+ − 0</span><span>Zoom in / out / reset</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>E</span><span>Explain selection</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>Esc</span><span>Clear selection</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>⌘O</span><span>Open PDF</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent-color)" }}>?</span><span>Toggle this help</span>
+            </div>
+            <div style={{ marginTop: 12, fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
+              Click anywhere outside to close
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
