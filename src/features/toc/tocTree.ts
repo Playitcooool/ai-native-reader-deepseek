@@ -7,7 +7,7 @@ export interface TocNodeInput {
   order_index: number;
   start_page: number;
   end_page: number | null;
-  temp_id?: string; // client-side ID for parent reference resolution
+  temp_id?: string;
 }
 
 interface OutlineItem {
@@ -48,10 +48,20 @@ async function flattenOutline(
   const nodes: TocNodeInput[] = [];
 
   for (const item of items) {
-    orderCounter.value++;
     const page = await resolvePage(pdf, item);
-    if (page === null && (!item.items || item.items.length === 0)) continue;
+    const hasChildren = item.items && item.items.length > 0;
 
+    // Skip leaf nodes with no resolvable page
+    if (page === null && !hasChildren) continue;
+
+    // Container node with no resolvable page: promote children to parent level, skip self
+    if (page === null && hasChildren && item.items) {
+      const children = await flattenOutline(pdf, item.items, parentId, level, orderCounter);
+      nodes.push(...children);
+      continue;
+    }
+
+    orderCounter.value++;
     const nodeId = `toc_${orderCounter.value}`;
     nodes.push({
       temp_id: nodeId,
@@ -63,14 +73,8 @@ async function flattenOutline(
       end_page: null,
     });
 
-    if (item.items && item.items.length > 0) {
-      const children = await flattenOutline(
-        pdf,
-        item.items,
-        nodeId,
-        level + 1,
-        orderCounter,
-      );
+    if (hasChildren && item.items) {
+      const children = await flattenOutline(pdf, item.items, nodeId, level + 1, orderCounter);
       nodes.push(...children);
     }
   }
@@ -78,25 +82,18 @@ async function flattenOutline(
   return nodes;
 }
 
-// Compute end pages based on the next node of same or higher level
+// Compute end pages based on the next node of same or higher level.
+// Nodes MUST be in DFS order (parent before children, siblings sequential).
 export function computeEndPages(
   nodes: TocNodeInput[],
   totalPages: number,
 ): TocNodeInput[] {
-  // Build parent→children map
-  const childrenOf = new Map<string | null, TocNodeInput[]>();
-  for (const node of nodes) {
-    const key = node.parent_id ?? "__root__";
-    const list = childrenOf.get(key) ?? [];
-    list.push(node);
-    childrenOf.set(key, list);
-  }
-
   const result = nodes.map((n) => ({ ...n }));
 
   for (let i = 0; i < result.length; i++) {
     const node = result[i];
-    // Find next node at same or higher level
+    // Find next node at same or higher level (level numerically <= node.level).
+    // In DFS order this finds the next sibling or the parent's next sibling.
     let nextIdx = -1;
     for (let j = i + 1; j < result.length; j++) {
       if (result[j].level <= node.level) {
