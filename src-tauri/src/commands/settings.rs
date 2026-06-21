@@ -1,11 +1,10 @@
 use crate::db::models::{ProviderSettings, ProviderSettingsInput, TestProviderResult};
-use rusqlite::Connection;
 use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
 use chrono::Utc;
 
-pub struct DbState(pub Mutex<Connection>);
+pub struct DbState(pub Mutex<rusqlite::Connection>);
 
 #[tauri::command]
 pub fn get_provider_settings(db: State<DbState>) -> Result<Vec<ProviderSettings>, String> {
@@ -73,15 +72,39 @@ pub fn set_default_provider(db: State<DbState>, provider_id: String) -> Result<(
 }
 
 #[tauri::command]
-pub fn test_provider(provider_id: String) -> Result<TestProviderResult, String> {
-    // ponytail: synchronous HTTP test via ureq would add a dep. Mock response for now.
-    // P1: implement actual HTTP call to {base_url}/chat/completions
+pub async fn test_provider(
+    db: State<'_, DbState>,
+    provider_id: String,
+) -> Result<TestProviderResult, String> {
+    let (base_url, api_key, model) = {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare("SELECT base_url, api_key, model FROM provider_settings WHERE id = ?1")
+            .map_err(|e| e.to_string())?;
+        let mut rows = stmt
+            .query_map(rusqlite::params![provider_id], |row| {
+                Ok((
+                    row.get::<_, Option<String>>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+        rows.next()
+            .ok_or("Provider not found")?
+            .map_err(|e| e.to_string())?
+    };
+
+    let base_url = base_url.ok_or("Missing base_url")?;
+    let api_key = api_key.ok_or("Missing api_key")?;
+
+    let result = crate::ai::provider::test_provider(&base_url, &api_key, &model).await;
     Ok(TestProviderResult {
-        ok: true,
+        ok: result.ok,
         provider_id,
-        model: Some("test-model".into()),
-        latency_ms: Some(0),
-        error_code: None,
-        error_message: None,
+        model: result.model,
+        latency_ms: Some(result.latency_ms),
+        error_code: result.error_code,
+        error_message: result.error_message,
     })
 }
