@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev           # Vite dev server only (port 1420)
 npm run tauri dev     # Full Tauri dev (Vite + native window)
-npm run build         # TypeScript check + Vite build (frontend only)
-npm run tauri build   # Production Tauri build (frontend + Rust)
+npm run build         # TypeScript check + Vite build (frontend only — does NOT produce an app bundle)
+npm run tauri:build   # Production Tauri build → double-clickable macOS .app in src-tauri/target/release/bundle/
 npm test              # Vitest (all tests)
 npm run tauri         # Tauri CLI passthrough
 ```
