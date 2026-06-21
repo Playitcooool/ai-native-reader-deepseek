@@ -2,40 +2,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDocumentStore } from "../stores/documentStore";
 import { useAiStore } from "../stores/aiStore";
 import ReactMarkdown from "react-markdown";
-import { useReaderStore } from "../stores/readerStore";
+import { invoke } from "@tauri-apps/api/core";
+// citationParser imported for future structured citation parsing
 
 export default function AiSidebar() {
-  const { currentDocument, currentPage } = useDocumentStore();
+  const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
   const { messages, isGenerating, runWorkflow } = useAiStore();
-  const { selectedText } = useReaderStore();
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const [savedNotes, setSavedNotes] = useState<Set<string>>(new Set());
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Load existing session messages when document changes
-  useEffect(() => {
-    // Simple approach: clear messages when document changes
-    // Session loading will be done on demand
-  }, [currentDocument?.id]);
-
   const handleExplain = useCallback(async () => {
-    if (!currentDocument || !selectedText) return;
+    if (!currentDocument) return;
+    const sel = window.getSelection()?.toString().trim();
+    if (!sel) return;
     await runWorkflow({
       documentId: currentDocument.id,
       documentTitle: currentDocument.title ?? undefined,
       mode: "selection_explain",
       pageNumber: currentPage,
-      selectedText,
+      selectedText: sel,
     });
-  }, [currentDocument, selectedText, currentPage, runWorkflow]);
+  }, [currentDocument, currentPage, runWorkflow]);
 
   const handleSummarizePage = useCallback(async () => {
     if (!currentDocument) return;
@@ -72,14 +68,88 @@ export default function AiSidebar() {
     });
   }, [currentDocument, currentPage, input, runWorkflow]);
 
+  // Save AI answer as note
+  const handleSaveAsNote = useCallback(
+    async (msg: typeof messages[0]) => {
+      if (!currentDocument || savedNotes.has(msg.id)) return;
+      try {
+        await invoke("create_annotation", {
+          input: {
+            document_id: currentDocument.id,
+            page_number: msg.page_number ?? currentPage,
+            type: "ai_note",
+            note_text: msg.content,
+            selected_text: null,
+          },
+        });
+        setSavedNotes((prev) => new Set(prev).add(msg.id));
+      } catch (err) {
+        console.error("Failed to save note:", err);
+      }
+    },
+    [currentDocument, currentPage, savedNotes],
+  );
+
+  // Handle citation click
+  const handleCitationClick = useCallback(
+    (e: React.MouseEvent, pageNumber: number) => {
+      e.preventDefault();
+      setCurrentPage(pageNumber);
+      invoke("update_last_page", {
+        documentId: currentDocument?.id,
+        pageNumber,
+      }).catch(() => {});
+    },
+    [currentDocument?.id, setCurrentPage],
+  );
+
+  // Custom markdown renderer for citation links
+  const renderers = useCallback(
+    (_msg: typeof messages[0]) => ({
+      p: ({ children }: any) => {
+        // Parse children for [p.X] patterns
+        const text = extractText(children);
+        if (!text) return <p>{children}</p>;
+        const parts = text.split(/(\[p\.?\s*\d+\])/gi);
+        if (parts.length === 1) return <p>{children}</p>;
+
+        return (
+          <p>
+            {parts.map((part: string, i: number) => {
+              const match = part.match(/\[p\.?\s*(\d+)\]/i);
+              if (match) {
+                const page = parseInt(match[1], 10);
+                return (
+                  <a
+                    key={i}
+                    href="#"
+                    onClick={(e) => handleCitationClick(e, page)}
+                    style={{
+                      color: "var(--accent-color)",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    [p.{page}]
+                  </a>
+                );
+              }
+              return <span key={i}>{part}</span>;
+            })}
+          </p>
+        );
+      },
+    }),
+    [handleCitationClick],
+  );
+
   if (!currentDocument) {
     return (
       <div className="sidebar-right">
         <div className="ai-header">AI Assistant</div>
         <div className="ai-content">
-          <p>
-            Open a PDF to start reading with AI assistance.
-          </p>
+          <p>Open a PDF to start reading with AI assistance.</p>
         </div>
       </div>
     );
@@ -115,24 +185,22 @@ export default function AiSidebar() {
         >
           Summarize Page
         </button>
-        {selectedText && (
-          <button
-            onClick={handleExplain}
-            disabled={isGenerating}
-            style={{
-              padding: "4px 10px",
-              background: "var(--success-color)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
-            Explain Selection
-          </button>
-        )}
+        <button
+          onClick={handleExplain}
+          disabled={isGenerating}
+          style={{
+            padding: "4px 10px",
+            background: "var(--success-color)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 4,
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: "pointer",
+          }}
+        >
+          Explain Selection
+        </button>
       </div>
 
       {/* Page range input */}
@@ -192,14 +260,7 @@ export default function AiSidebar() {
         }}
       >
         {messages.length === 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              color: "var(--text-muted)",
-              fontSize: 13,
-              marginTop: 24,
-            }}
-          >
+          <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 13, marginTop: 24 }}>
             <p>AI answers will appear here.</p>
             <p style={{ marginTop: 4, fontSize: 12 }}>
               Select text and press <strong>E</strong> to explain, or click
@@ -213,10 +274,7 @@ export default function AiSidebar() {
             style={{
               padding: "8px 10px",
               borderRadius: 6,
-              background:
-                msg.role === "user"
-                  ? "var(--bg-secondary)"
-                  : "var(--bg-primary)",
+              background: msg.role === "user" ? "var(--bg-secondary)" : "var(--bg-primary)",
               border: "1px solid var(--border-color)",
               fontSize: 13,
               lineHeight: 1.5,
@@ -236,15 +294,49 @@ export default function AiSidebar() {
             </div>
             {msg.role === "assistant" ? (
               <div className="markdown-content">
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <ReactMarkdown components={renderers(msg)}>
+                  {msg.content}
+                </ReactMarkdown>
               </div>
             ) : (
               <div>{msg.content}</div>
             )}
+
+            {/* Action buttons for assistant messages */}
+            {msg.role === "assistant" && (
+              <div style={{ marginTop: 8, display: "flex", gap: 4 }}>
+                <button
+                  onClick={() => handleSaveAsNote(msg)}
+                  disabled={savedNotes.has(msg.id)}
+                  style={{
+                    padding: "3px 8px",
+                    background: savedNotes.has(msg.id) ? "var(--bg-tertiary)" : "transparent",
+                    color: savedNotes.has(msg.id) ? "var(--text-muted)" : "var(--accent-color)",
+                    border: `1px solid ${savedNotes.has(msg.id) ? "var(--border-color)" : "var(--accent-color)"}`,
+                    borderRadius: 3,
+                    fontSize: 11,
+                    cursor: "pointer",
+                  }}
+                >
+                  {savedNotes.has(msg.id) ? "✓ Saved" : "Save as Note"}
+                </button>
+              </div>
+            )}
+
             {msg.context_snapshot_json && (
               <details style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)" }}>
                 <summary style={{ cursor: "pointer" }}>Context snapshot</summary>
-                <pre style={{ marginTop: 4, padding: 4, background: "var(--bg-tertiary)", borderRadius: 3, maxHeight: 200, overflow: "auto", fontSize: 10 }}>
+                <pre
+                  style={{
+                    marginTop: 4,
+                    padding: 4,
+                    background: "var(--bg-tertiary)",
+                    borderRadius: 3,
+                    maxHeight: 200,
+                    overflow: "auto",
+                    fontSize: 10,
+                  }}
+                >
                   {JSON.stringify(JSON.parse(msg.context_snapshot_json), null, 2)}
                 </pre>
               </details>
@@ -252,14 +344,7 @@ export default function AiSidebar() {
           </div>
         ))}
         {isGenerating && (
-          <div
-            style={{
-              padding: "12px",
-              textAlign: "center",
-              color: "var(--text-muted)",
-              fontSize: 13,
-            }}
-          >
+          <div style={{ padding: "12px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
             Thinking...
           </div>
         )}
@@ -312,4 +397,13 @@ export default function AiSidebar() {
       </div>
     </div>
   );
+}
+
+// Helper to extract text from React children
+function extractText(children: any): string {
+  if (typeof children === "string") return children;
+  if (Array.isArray(children))
+    return children.map(extractText).join("");
+  if (children?.props?.children) return extractText(children.props.children);
+  return "";
 }
