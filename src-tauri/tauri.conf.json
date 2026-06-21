@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; img-src 'self' data: blob: asset:; connect-src 'self' https://asset.localhost",
+      "csp": "default-src 'self' asset:; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob: asset:; img-src 'self' data: blob: asset:; connect-src 'self' asset: https://asset.localhost",
       "assetProtocol": {
         "scope": ["**"]
       }

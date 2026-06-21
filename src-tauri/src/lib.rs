@@ -32,6 +32,7 @@ pub fn run() {
             commands::documents::update_last_zoom,
             commands::documents::update_page_count,
             commands::documents::delete_document,
+            commands::documents::read_file_bytes,
             commands::pages::save_page_text,
             commands::pages::get_page_text,
             commands::pages::get_pages_text,

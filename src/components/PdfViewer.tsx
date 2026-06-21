@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import "../pdfjs";
 import { useDocumentStore } from "../stores/documentStore";
 import { useAiStore } from "../stores/aiStore";
@@ -74,8 +73,12 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     let destroyed = false;
     const loadPdf = async () => {
       try {
-        const url = convertFileSrc(filePath);
-        const pdf = await pdfjsLib.getDocument(url).promise;
+        // Read PDF via Rust command to avoid asset protocol issues
+        const b64 = await invoke<string>("read_file_bytes", { filePath });
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
         if (destroyed) { pdf.destroy(); return; }
         pdfRef.current = pdf;
         setTotalPages(pdf.numPages);

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use tauri::State;
 use uuid::Uuid;
 use chrono::Utc;
+use base64::Engine;
 
 use super::settings::DbState;
 
@@ -155,6 +156,13 @@ pub fn update_last_zoom(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn read_file_bytes(file_path: String) -> Result<String, String> {
+    let contents = fs::read(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&contents);
+    Ok(b64)
 }
 
 #[tauri::command]
