@@ -7,6 +7,7 @@ export default function CenterViewer() {
   if (currentDocument) {
     return (
       <PdfViewer
+        key={currentDocument.id}
         filePath={currentDocument.file_path}
         documentId={currentDocument.id}
       />
