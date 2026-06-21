@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod documents;
 pub mod notes;
 pub mod pages;

@@ -48,6 +48,13 @@ pub fn run() {
             commands::settings::save_provider_settings,
             commands::settings::set_default_provider,
             commands::settings::test_provider,
+            commands::ai::get_or_create_ai_session,
+            commands::ai::get_session_messages,
+            commands::ai::save_ai_message,
+            commands::ai::compact_session,
+            commands::ai::get_reading_state,
+            commands::ai::update_reading_state,
+            commands::ai::get_citations_for_message,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

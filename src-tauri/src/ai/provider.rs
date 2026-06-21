@@ -17,14 +17,14 @@ struct ChatRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct ChatResponse {
-    choices: Vec<Choice>,
+    pub choices: Vec<Choice>,
     #[allow(dead_code)]
     usage: Option<Usage>,
 }
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Choice {
-    message: ChatMessage,
+    pub message: ChatMessage,
     #[allow(dead_code)]
     finish_reason: Option<String>,
 }
