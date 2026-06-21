@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { TocNode } from "../features/toc/TocSidebar";
 
 export interface Document {
@@ -35,9 +36,10 @@ interface DocumentState {
   setActiveTocNodeId: (id: string | null) => void;
   loadDocuments: () => Promise<void>;
   loadToc: (documentId: string) => Promise<void>;
+  handleOpenPdf: () => Promise<void>;
 }
 
-export const useDocumentStore = create<DocumentState>((set) => ({
+export const useDocumentStore = create<DocumentState>((set, get) => ({
   documents: [],
   currentDocument: null,
   currentPage: 1,
@@ -71,6 +73,21 @@ export const useDocumentStore = create<DocumentState>((set) => ({
       set({ tocNodes: nodes });
     } catch (err) {
       console.error("Failed to load TOC:", err);
+    }
+  },
+  handleOpenPdf: async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+      if (!selected) return;
+      const doc = await invoke<Document>("import_pdf", { filePath: selected });
+      get().setCurrentDocument(doc);
+      const docs = await invoke<Document[]>("get_documents");
+      get().setDocuments(docs);
+    } catch (err) {
+      console.error("Failed to open PDF:", err);
     }
   },
 }));

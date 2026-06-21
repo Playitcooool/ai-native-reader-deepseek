@@ -3,32 +3,15 @@ import LeftSidebar from "./components/LeftSidebar";
 import CenterViewer from "./components/CenterViewer";
 import AiSidebar from "./components/AiSidebar";
 import { useSettingsStore } from "./stores/settingsStore";
-import { useDocumentStore, type Document } from "./stores/documentStore";
-import { useEffect, useCallback } from "react";
+import { useDocumentStore } from "./stores/documentStore";
+import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { open } from "@tauri-apps/plugin-dialog";
 import type { ProviderSettings } from "./stores/settingsStore";
 
 function App() {
   const setSettings = useSettingsStore((s) => s.setSettings);
-  const { setCurrentDocument, setDocuments } = useDocumentStore();
-
-  const handleOpenPdf = useCallback(async () => {
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: "PDF", extensions: ["pdf"] }],
-      });
-      if (!selected) return;
-      const doc = await invoke<Document>("import_pdf", { filePath: selected });
-      setCurrentDocument(doc);
-      const docs = await invoke<Document[]>("get_documents");
-      setDocuments(docs);
-    } catch (err) {
-      console.error("Failed to open PDF:", err);
-    }
-  }, [setCurrentDocument, setDocuments]);
+  const handleOpenPdf = useDocumentStore((s) => s.handleOpenPdf);
 
   useEffect(() => {
     invoke<ProviderSettings[]>("get_provider_settings")

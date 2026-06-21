@@ -1,30 +1,8 @@
-import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
-import { useDocumentStore, type Document } from "../stores/documentStore";
+import { useDocumentStore } from "../stores/documentStore";
 import PdfViewer from "./PdfViewer";
 
 export default function CenterViewer() {
-  const { currentDocument, setCurrentDocument, setDocuments } =
-    useDocumentStore();
-
-  const handleOpenPdf = async () => {
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: "PDF", extensions: ["pdf"] }],
-      });
-      if (!selected) return;
-      const doc = await invoke<Document>("import_pdf", {
-        filePath: selected,
-      });
-      setCurrentDocument(doc);
-      // Refresh document list
-      const docs = await invoke<Document[]>("get_documents");
-      setDocuments(docs);
-    } catch (err) {
-      console.error("Failed to open PDF:", err);
-    }
-  };
+  const { currentDocument, handleOpenPdf } = useDocumentStore();
 
   if (currentDocument) {
     return (
