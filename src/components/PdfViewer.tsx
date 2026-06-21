@@ -73,6 +73,25 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     scrollContainerRef: scrollRef as React.RefObject<HTMLElement | null>,
   });
 
+  // Programmatic scroll (TOC, citations, keyboard arrows, doc restore)
+  // MUST be declared before the page detection effect so progScrollRef is set
+  // before page detection checks it, preventing oscillation on document restore.
+  useEffect(() => {
+    if (!currentDocument || heights.length === 0) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    progScrollRef.current = true;
+    let acc = 0;
+    for (let i = 0; i < currentPage - 1 && i < heights.length; i++) {
+      acc += heights[i];
+    }
+    container.scrollTop = acc;
+    const raf = requestAnimationFrame(() => {
+      progScrollRef.current = false;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [currentPage, heights.length]);
+
   // Derive current page from scroll position — debounced to store
   useEffect(() => {
     const container = scrollRef.current;
@@ -100,23 +119,6 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
       if (pageDebounceRef.current) clearTimeout(pageDebounceRef.current);
     };
   }, []);
-
-  // Programmatic scroll (TOC, citations, keyboard arrows, doc restore)
-  useEffect(() => {
-    if (!currentDocument || heights.length === 0) return;
-    const container = scrollRef.current;
-    if (!container) return;
-    progScrollRef.current = true;
-    let acc = 0;
-    for (let i = 0; i < currentPage - 1 && i < heights.length; i++) {
-      acc += heights[i];
-    }
-    container.scrollTop = acc;
-    const raf = requestAnimationFrame(() => {
-      progScrollRef.current = false;
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [currentPage, heights.length]);
 
   // Load PDF
   useEffect(() => {
