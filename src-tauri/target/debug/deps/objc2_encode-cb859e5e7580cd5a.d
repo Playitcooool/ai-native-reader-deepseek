@@ -1,0 +1,10 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/objc2_encode-cb859e5e7580cd5a.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/encoding.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/encoding_box.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/helper.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/parse.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/static_str.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libobjc2_encode-cb859e5e7580cd5a.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/encoding.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/encoding_box.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/helper.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/parse.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/static_str.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/encoding.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/encoding_box.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/helper.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/parse.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/objc2-encode-4.1.0/src/static_str.rs:

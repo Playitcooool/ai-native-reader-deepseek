@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/siphasher-5e4370345835e730.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/common.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip128.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/../README.md
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libsiphasher-5e4370345835e730.rlib: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/common.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip128.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/../README.md
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libsiphasher-5e4370345835e730.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/common.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip128.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/../README.md
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/common.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/sip128.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/siphasher-1.0.3/src/../README.md:

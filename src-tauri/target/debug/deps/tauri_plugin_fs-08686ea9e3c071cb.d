@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/tauri_plugin_fs-08686ea9e3c071cb.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/commands.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/config.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/desktop.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/error.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/file_path.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/scope.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libtauri_plugin_fs-08686ea9e3c071cb.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/commands.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/config.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/desktop.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/error.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/file_path.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/scope.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/commands.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/config.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/desktop.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/error.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/file_path.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/src/scope.rs:

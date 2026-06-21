@@ -1,0 +1,10 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/zerovec_derive-8ba7d528a4244bb7.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/make_ule.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/make_varule.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/ule.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/utils.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/varule.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libzerovec_derive-8ba7d528a4244bb7.dylib: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/make_ule.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/make_varule.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/ule.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/utils.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/varule.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/make_ule.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/make_varule.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/ule.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/utils.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/zerovec-derive-0.11.3/src/varule.rs:

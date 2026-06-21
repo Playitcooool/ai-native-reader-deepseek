@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/digest-fa9b552b39c4561a.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/ct_variable.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/rt_variable.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/wrapper.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/xof_reader.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/digest.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libdigest-fa9b552b39c4561a.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/ct_variable.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/rt_variable.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/wrapper.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/xof_reader.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/digest.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/ct_variable.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/rt_variable.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/wrapper.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/core_api/xof_reader.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/digest-0.10.7/src/digest.rs:

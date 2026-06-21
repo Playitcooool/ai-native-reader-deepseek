@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/getrandom-e94cfc3327340380.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/error.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/util.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/../README.md /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends/getentropy.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends/../utils/get_errno.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libgetrandom-e94cfc3327340380.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/error.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/util.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/../README.md /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends/getentropy.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends/../utils/get_errno.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/error.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/util.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/../README.md:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends/getentropy.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/getrandom-0.4.3/src/backends/../utils/get_errno.rs:

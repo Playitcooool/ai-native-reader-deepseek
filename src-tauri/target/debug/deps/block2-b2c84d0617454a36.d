@@ -1,0 +1,14 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/block2-b2c84d0617454a36.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/abi.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/block.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/debug.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/encoding.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/ffi.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/global.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/rc_block.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/stack.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/traits.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libblock2-b2c84d0617454a36.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/abi.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/block.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/debug.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/encoding.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/ffi.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/global.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/rc_block.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/stack.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/traits.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/abi.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/block.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/debug.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/encoding.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/ffi.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/global.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/rc_block.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/stack.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/block2-0.6.2/src/traits.rs:

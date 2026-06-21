@@ -1,0 +1,12 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/bitflags-93a5e45cc5864755.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/iter.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/parser.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/traits.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/public.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/internal.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/external.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/external/serde.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libbitflags-93a5e45cc5864755.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/iter.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/parser.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/traits.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/public.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/internal.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/external.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/external/serde.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/iter.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/parser.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/traits.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/public.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/internal.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/external.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/bitflags-2.13.0/src/external/serde.rs:

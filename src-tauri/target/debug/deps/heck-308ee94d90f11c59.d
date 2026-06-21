@@ -1,0 +1,13 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/heck-308ee94d90f11c59.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/kebab.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/lower_camel.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/shouty_kebab.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/shouty_snake.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/snake.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/title.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/train.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/upper_camel.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libheck-308ee94d90f11c59.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/kebab.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/lower_camel.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/shouty_kebab.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/shouty_snake.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/snake.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/title.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/train.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/upper_camel.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/kebab.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/lower_camel.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/shouty_kebab.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/shouty_snake.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/snake.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/title.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/train.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/heck-0.5.0/src/upper_camel.rs:

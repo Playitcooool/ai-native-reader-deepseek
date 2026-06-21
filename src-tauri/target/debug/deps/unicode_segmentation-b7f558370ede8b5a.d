@@ -1,0 +1,9 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/unicode_segmentation-b7f558370ede8b5a.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/grapheme.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/sentence.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/word.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/tables.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libunicode_segmentation-b7f558370ede8b5a.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/grapheme.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/sentence.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/word.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/tables.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/grapheme.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/sentence.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/word.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/unicode-segmentation-1.13.3/src/tables.rs:

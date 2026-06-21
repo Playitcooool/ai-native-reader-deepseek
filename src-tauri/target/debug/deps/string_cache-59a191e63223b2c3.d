@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/string_cache-59a191e63223b2c3.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/atom.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/dynamic_set.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/static_sets.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/trivial_impls.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libstring_cache-59a191e63223b2c3.rlib: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/atom.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/dynamic_set.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/static_sets.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/trivial_impls.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libstring_cache-59a191e63223b2c3.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/atom.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/dynamic_set.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/static_sets.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/trivial_impls.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/atom.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/dynamic_set.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/static_sets.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/string_cache-0.9.0/src/trivial_impls.rs:

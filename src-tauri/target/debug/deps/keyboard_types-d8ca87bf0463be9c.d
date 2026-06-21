@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/keyboard_types-d8ca87bf0463be9c.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/code.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/key.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/location.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/modifiers.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/shortcuts.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/webdriver.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libkeyboard_types-d8ca87bf0463be9c.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/code.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/key.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/location.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/modifiers.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/shortcuts.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/webdriver.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/code.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/key.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/location.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/modifiers.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/shortcuts.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/keyboard-types-0.7.0/src/webdriver.rs:

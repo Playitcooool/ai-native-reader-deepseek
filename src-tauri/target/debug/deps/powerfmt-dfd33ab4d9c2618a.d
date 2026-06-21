@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/powerfmt-dfd33ab4d9c2618a.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/buf.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/ext.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display_impls.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libpowerfmt-dfd33ab4d9c2618a.rlib: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/buf.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/ext.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display_impls.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libpowerfmt-dfd33ab4d9c2618a.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/buf.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/ext.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display_impls.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/buf.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/ext.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/powerfmt-0.2.0/src/smart_display_impls.rs:

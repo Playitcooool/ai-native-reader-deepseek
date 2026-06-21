@@ -1,0 +1,13 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/yoke-09cca7517c154a21.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/cartable_ptr.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/either.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/kinda_sorta_dangling.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/macro_impls.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/utils.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/yoke.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/yokeable.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/zero_from.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libyoke-09cca7517c154a21.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/cartable_ptr.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/either.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/kinda_sorta_dangling.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/macro_impls.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/utils.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/yoke.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/yokeable.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/zero_from.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/cartable_ptr.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/either.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/kinda_sorta_dangling.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/macro_impls.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/utils.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/yoke.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/yokeable.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/yoke-0.8.3/src/zero_from.rs:

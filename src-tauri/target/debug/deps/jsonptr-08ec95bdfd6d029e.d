@@ -1,0 +1,13 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/jsonptr-08ec95bdfd6d029e.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/assign.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/delete.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/resolve.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/pointer.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/token.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/index.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/component.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/../README.md
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libjsonptr-08ec95bdfd6d029e.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/assign.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/delete.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/resolve.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/pointer.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/token.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/index.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/component.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/../README.md
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/assign.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/delete.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/resolve.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/pointer.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/token.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/index.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/component.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/jsonptr-0.6.3/src/../README.md:

@@ -1,0 +1,12 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/cookie-889b7a831a30b23d.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/builder.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/parse.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/jar.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/delta.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/same_site.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/expiration.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/prefix.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libcookie-889b7a831a30b23d.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/builder.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/parse.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/jar.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/delta.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/same_site.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/expiration.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/prefix.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/builder.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/parse.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/jar.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/delta.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/same_site.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/expiration.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/cookie-0.18.1/src/prefix.rs:

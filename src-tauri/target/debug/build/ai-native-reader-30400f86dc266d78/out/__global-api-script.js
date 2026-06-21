@@ -1,0 +1,1 @@
+["/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-2.11.3/scripts/bundle.global.js","/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/api-iife.js","/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-fs-2.5.1/api-iife.js"]

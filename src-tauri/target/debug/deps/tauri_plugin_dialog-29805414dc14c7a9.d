@@ -1,0 +1,10 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/tauri_plugin_dialog-29805414dc14c7a9.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/desktop.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/commands.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/error.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/models.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/init-iife.js
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libtauri_plugin_dialog-29805414dc14c7a9.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/desktop.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/commands.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/error.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/models.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/init-iife.js
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/desktop.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/commands.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/error.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/models.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/tauri-plugin-dialog-2.7.1/src/init-iife.js:

@@ -1,0 +1,11 @@
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/generic_array-acb023b3eec3b267.d: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/hex.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/impls.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/arr.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/functional.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/iter.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/sequence.rs
+
+/Volumes/Samsung/Projects/ai-native-reader-deepseek/src-tauri/target/debug/deps/libgeneric_array-acb023b3eec3b267.rmeta: /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/lib.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/hex.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/impls.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/arr.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/functional.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/iter.rs /Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/sequence.rs
+
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/lib.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/hex.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/impls.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/arr.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/functional.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/iter.rs:
+/Users/weiciruan/.cargo/registry/src/rsproxy.cn-e3de039b2554c837/generic-array-0.14.7/src/sequence.rs:
