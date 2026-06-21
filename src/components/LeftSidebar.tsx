@@ -132,12 +132,12 @@ export default function LeftSidebar() {
         ))}
       </div>
       <div className="tab-content">
-        {tabs.map((t) => (
-          <div key={t.id} role="tabpanel" id={`tabpanel-${t.id}`} aria-labelledby={`tab-${t.id}`} hidden={activeTab !== t.id}
-            style={activeTab === t.id ? { height: "100%", overflowY: "auto" } : undefined}>
-            {t.id === "recent" && (
-          <div>
-            {docsLoading ? (
+        {tabs.map((t) =>
+          activeTab === t.id ? (
+            <div key={t.id} role="tabpanel" id={`tabpanel-${t.id}`} aria-labelledby={`tab-${t.id}`} style={{ height: "100%", overflowY: "auto" }}>
+              {t.id === "recent" && (
+                <div>
+                  {docsLoading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "4px 0" }}>
                 <SkeletonBlock lines={[70, 40]} />
                 <SkeletonBlock lines={[60, 35]} />
@@ -244,7 +244,8 @@ export default function LeftSidebar() {
             )}
             {t.id === "settings" && <SettingsPanel />}
           </div>
-        ))}
+        ) : null
+      )}
       </div>
       <style>{`
         @keyframes skeleton-pulse {
