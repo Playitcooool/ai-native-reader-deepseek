@@ -7,12 +7,14 @@
 
 .sidebar-left {
   width: var(--sidebar-width);
-  min-width: var(--sidebar-width);
+  min-width: 200px;
+  max-width: 500px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  resize: horizontal;
 }
 
 .sidebar-left .tabs {
@@ -74,12 +76,14 @@
 
 .sidebar-right {
   width: var(--ai-sidebar-width);
-  min-width: var(--ai-sidebar-width);
+  min-width: 250px;
+  max-width: 600px;
   background: var(--bg-primary);
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  resize: horizontal;
 }
 
 .ai-header {
