@@ -77,4 +77,5 @@ Database in `src-tauri/src/db/`:
 - No React Router — single-page layout with Zustand-driven tab switching.
 - Theme is stored in `localStorage` (`reader-theme` key) and toggled via a sync `<script>` in `index.html` to prevent flash. CSS variables on `[data-theme="dark"]` in `index.css`.
 - PDF text search in `PdfViewer` iterates all pages via pdfjs `getTextContent()`, yielding every 3 pages via `setTimeout(0)` to keep UI responsive for long PDFs. Search is cancellable via ref flag.
+- Effect ordering in `PdfViewer` matters: the programmatic scroll effect MUST be declared before the page detection effect. React fires effects in declaration order, so `progScrollRef` must be set `true` before the page detection reads scroll position — otherwise it schedules a page update from the stale scrollTop, causing oscillation.
 - Ponytail mode: this codebase prefers minimal dependencies and YAGNI. No extra abstraction layers.
