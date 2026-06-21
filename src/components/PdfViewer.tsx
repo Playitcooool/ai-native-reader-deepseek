@@ -6,6 +6,7 @@ import "../pdfjs";
 import { useDocumentStore } from "../stores/documentStore";
 import { invoke } from "@tauri-apps/api/core";
 import { extractToc, type TocNodeInput } from "../features/toc/tocTree";
+import { PageExtractionQueue } from "../features/pdf/pdfTextExtraction";
 
 interface PdfViewerProps {
   filePath: string;
@@ -28,6 +29,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
   } = useDocumentStore();
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<any>(null);
+  const extractionRef = useRef<PageExtractionQueue | null>(null);
 
   const renderPage = useCallback(
     async (pdf: PDFDocumentProxy, pageNum: number, scale: number) => {
@@ -56,7 +58,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     [],
   );
 
-  // Load PDF and extract TOC
+  // Load PDF, extract TOC, start text extraction
   useEffect(() => {
     let destroyed = false;
     const loadPdf = async () => {
@@ -78,6 +80,18 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           });
         }
         await loadToc(documentId);
+
+        // Start text extraction
+        const eq = new PageExtractionQueue(
+          pdf,
+          documentId,
+          (docId, pageNum, text) => invoke("save_page_text", { documentId: docId, pageNumber: pageNum, text }),
+          (docId, pageNum) => invoke("mark_page_text_failed", { documentId: docId, pageNumber: pageNum }),
+        );
+        extractionRef.current = eq;
+        eq.setCurrentPage(1, pdf.numPages);
+        // Enqueue remaining pages at low priority after a short delay
+        setTimeout(() => eq.enqueueAll(pdf.numPages), 2000);
       } catch (err) {
         if (!destroyed) setError(`Failed to load PDF: ${err}`);
       }
@@ -86,6 +100,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     return () => {
       destroyed = true;
       renderTaskRef.current?.cancel();
+      extractionRef.current?.destroy();
       pdfRef.current?.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,13 +114,20 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     }
   }, [currentPage, zoom, renderPage]);
 
-  // Track active TOC node by current page
+  // Update extraction priority when page changes
+  useEffect(() => {
+    const pdf = pdfRef.current;
+    if (extractionRef.current && pdf) {
+      extractionRef.current.setCurrentPage(currentPage, pdf.numPages);
+    }
+  }, [currentPage]);
+
+  // Track active TOC node
   useEffect(() => {
     if (tocNodes.length === 0 || currentPage < 1) {
       setActiveTocNodeId(null);
       return;
     }
-    // Find deepest TOC node that covers current page
     let best: typeof tocNodes[0] | null = null;
     for (const node of tocNodes) {
       if (node.start_page <= currentPage && (node.end_page === null || currentPage <= node.end_page)) {
@@ -129,7 +151,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     [currentPage, documentId, setCurrentPage],
   );
 
-  // Mouse wheel → page navigation
+  // Mouse wheel
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       if (e.deltaY > 0) goToPage(currentPage + 1);
@@ -200,9 +222,6 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
         {error ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <p style={{ color: "var(--danger-color)", marginBottom: 8 }}>{error}</p>
-            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              {error.includes("load") ? "The file may be corrupt or encrypted." : "Try zooming out or navigating to a different page."}
-            </p>
           </div>
         ) : (
           <div style={{ minHeight: scrollHeight, display: "flex", alignItems: "flex-start" }}>
@@ -212,9 +231,6 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
             />
           </div>
         )}
-        <div style={{ fontSize: 11, color: "var(--text-muted)", padding: "8px 0", textAlign: "center" }}>
-          Use mouse wheel, ← → arrows, or Page Up/Down to navigate
-        </div>
       </div>
     </div>
   );
