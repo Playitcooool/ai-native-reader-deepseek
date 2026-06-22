@@ -87,9 +87,7 @@ export default memo(function PdfTextLayer({ page, scale, onSelection, containerW
         left: 0,
         width: containerWidth ?? "100%",
         height: containerHeight ?? "100%",
-        userSelect: "text",
         color: "transparent",
-        pointerEvents: "auto",
         overflow: "hidden",
         lineHeight: 1,
       }}
@@ -103,7 +101,6 @@ export default memo(function PdfTextLayer({ page, scale, onSelection, containerW
             top: s.y - s.height,
             fontSize: s.fontSize,
             whiteSpace: "pre",
-            pointerEvents: "none",
             lineHeight: 1,
           }}
         >
