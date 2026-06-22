@@ -39,6 +39,7 @@ interface DocumentState {
   loadDocuments: () => Promise<void>;
   loadToc: (documentId: string) => Promise<void>;
   handleOpenPdf: () => Promise<void>;
+  handleOpenFolder: () => Promise<void>;
   scrollToPage: (page: number) => void;
   setLibraryFolder: (folder: string | null) => void;
   loadLibraryFolder: () => Promise<void>;
@@ -96,6 +97,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     if (!selected) return;
     const doc = await invoke<Document>("import_pdf", { filePath: selected });
     get().setCurrentDocument(doc);
+    const docs = await invoke<Document[]>("get_documents");
+    get().setDocuments(docs);
+  },
+  handleOpenFolder: async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (!selected) return;
+    await invoke("set_library_folder", { path: selected });
+    get().setLibraryFolder(selected);
     const docs = await invoke<Document[]>("get_documents");
     get().setDocuments(docs);
   },

@@ -14,6 +14,10 @@ fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
         if let Some(window) = app.get_webview_window("main") {
             window.emit("menu-open-pdf", ()).ok();
         }
+    } else if event.id() == "open_folder" {
+        if let Some(window) = app.get_webview_window("main") {
+            window.emit("menu-open-folder", ()).ok();
+        }
     }
 }
 
@@ -47,11 +51,15 @@ pub fn run() {
             let open = MenuItemBuilder::with_id("open_pdf", "Open PDF…")
                 .accelerator("CmdOrCtrl+O")
                 .build(app)?;
+            let open_folder = MenuItemBuilder::with_id("open_folder", "Open Folder…")
+                .accelerator("CmdOrCtrl+Shift+O")
+                .build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "Quit")
                 .accelerator("CmdOrCtrl+Q")
                 .build(app)?;
             let file_menu = SubmenuBuilder::new(app, "File")
                 .item(&open)
+                .item(&open_folder)
                 .separator()
                 .item(&quit)
                 .build()?;

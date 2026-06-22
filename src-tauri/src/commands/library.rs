@@ -89,7 +89,6 @@ fn scan_folder_into_db(
     conn_mutex: &Mutex<rusqlite::Connection>,
     folder_path: &str,
 ) -> Result<i32, String> {
-    let dir = fs::read_dir(folder_path).map_err(|e| format!("Failed to read folder: {}", e))?;
     let conn = conn_mutex.lock().map_err(|e| e.to_string())?;
 
     let mut stmt = conn
@@ -102,27 +101,33 @@ fn scan_folder_into_db(
         .collect();
 
     let mut imported = 0;
-    for entry in dir.filter_map(|e| e.ok()) {
-        let file_path = entry.path();
-        if file_path.extension().map(|e| e == "pdf").unwrap_or(false) {
-            let path_str = file_path.to_string_lossy().to_string();
-            if existing.contains(&path_str) {
-                continue;
+    let mut dirs = vec![std::path::PathBuf::from(folder_path)];
+    while let Some(dir) = dirs.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        for entry in entries.filter_map(|e| e.ok()) {
+            let file_path = entry.path();
+            if file_path.is_dir() {
+                dirs.push(file_path);
+            } else if file_path.extension().map(|e| e == "pdf").unwrap_or(false) {
+                let path_str = file_path.to_string_lossy().to_string();
+                if existing.contains(&path_str) {
+                    continue;
+                }
+                let filename = file_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let sha256 = documents::compute_sha256(&path_str)?;
+                let id = Uuid::new_v4().to_string();
+                let now = Utc::now().to_rfc3339();
+                conn.execute(
+                    "INSERT INTO documents (id, title, original_filename, file_path, file_sha256, page_count, created_at, updated_at, last_opened_at, parse_status, has_native_toc)
+                     VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, 'pending', 0)",
+                    rusqlite::params![id, filename, filename, path_str, sha256, now, now, now],
+                )
+                .map_err(|e| e.to_string())?;
+                imported += 1;
             }
-            let filename = file_path
-                .file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_default();
-            let sha256 = documents::compute_sha256(&path_str)?;
-            let id = Uuid::new_v4().to_string();
-            let now = Utc::now().to_rfc3339();
-            conn.execute(
-                "INSERT INTO documents (id, title, original_filename, file_path, file_sha256, page_count, created_at, updated_at, last_opened_at, parse_status, has_native_toc)
-                 VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, 'pending', 0)",
-                rusqlite::params![id, filename, filename, path_str, sha256, now, now, now],
-            )
-            .map_err(|e| e.to_string())?;
-            imported += 1;
         }
     }
     Ok(imported)
@@ -143,7 +148,7 @@ fn start_watcher(
     .map_err(|e| e.to_string())?;
 
     watcher
-        .watch(Path::new(folder_path), RecursiveMode::NonRecursive)
+        .watch(Path::new(folder_path), RecursiveMode::Recursive)
         .map_err(|e| e.to_string())?;
 
     *library.watcher.lock().map_err(|e| e.to_string())? = Some(watcher);

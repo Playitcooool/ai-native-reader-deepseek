@@ -15,6 +15,7 @@ function App() {
   const { addToast } = useToast();
   const setSettings = useSettingsStore((s) => s.setSettings);
   const handleOpenPdf = useDocumentStore((s) => s.handleOpenPdf);
+  const handleOpenFolder = useDocumentStore((s) => s.handleOpenFolder);
   const setCurrentDocument = useDocumentStore((s) => s.setCurrentDocument);
   const theme = useSettingsStore((s) => s.theme);
 
@@ -59,6 +60,14 @@ function App() {
       unlisten.then((fn) => fn());
     };
   }, [handleOpenPdf, addToast]);
+
+  // Listen for native menu File > Open Folder (Cmd+Shift+O)
+  useEffect(() => {
+    const unlisten = listen("menu-open-folder", () => {
+      handleOpenFolder().catch(() => addToast({ type: "error", message: "Failed to open folder." }));
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [handleOpenFolder, addToast]);
 
   // Listen for library folder updates (new PDF auto-imported by watcher)
   useEffect(() => {

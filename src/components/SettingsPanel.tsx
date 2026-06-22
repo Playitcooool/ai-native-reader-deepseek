@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
 import { useSettingsStore, type ProviderSettingsInput } from "../stores/settingsStore";
-import { useDocumentStore } from "../stores/documentStore";
 
 export default function SettingsPanel() {
   const { settings, addSetting, updateSetting } = useSettingsStore();
-  const { libraryFolder, setLibraryFolder, loadLibraryFolder, loadDocuments } = useDocumentStore();
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
@@ -27,8 +24,6 @@ export default function SettingsPanel() {
       setEditingId(s.id);
     }
   }, [settings]);
-
-  useEffect(() => { loadLibraryFolder(); }, [loadLibraryFolder]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -94,7 +89,6 @@ export default function SettingsPanel() {
   };
 
   return (
-    <>
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <h3 style={{ fontSize: 14, fontWeight: 600 }}>AI Provider</h3>
 
@@ -163,43 +157,5 @@ export default function SettingsPanel() {
         </div>
       )}
     </div>
-
-    <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 16 }}>PDF Library</h3>
-
-    {libraryFolder && (
-      <p style={{ fontSize: 12, color: "var(--text-secondary)", wordBreak: "break-all" }}>
-        📁 {libraryFolder}
-      </p>
-    )}
-
-    <div style={{ display: "flex", gap: 8 }}>
-      <button onClick={async () => {
-        const selected = await open({ directory: true, multiple: false });
-        if (!selected) return;
-        try {
-          await invoke("set_library_folder", { path: selected });
-          setLibraryFolder(selected);
-          await loadDocuments();
-        } catch (err) {
-          alert(`Failed to set folder: ${err}`);
-        }
-      }} style={{ padding: "6px 12px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 4, fontSize: 13, cursor: "pointer" }}>
-        Choose Folder
-      </button>
-
-      {libraryFolder && (
-        <button onClick={async () => {
-          try {
-            await invoke("clear_library_folder");
-            setLibraryFolder(null);
-          } catch (err) {
-            alert(`Failed to clear folder: ${err}`);
-          }
-        }} style={{ padding: "6px 12px", background: "transparent", color: "var(--danger-color)", border: "1px solid var(--danger-color)", borderRadius: 4, fontSize: 13, cursor: "pointer" }}>
-          Clear
-        </button>
-      )}
-    </div>
-    </>
   );
 }

@@ -6,10 +6,129 @@ import SettingsPanel from "./SettingsPanel";
 import { useDocumentStore } from "../stores/documentStore";
 import { useNotesStore } from "../stores/notesStore";
 import type { Annotation } from "../stores/notesStore";
+import type { Document } from "../stores/documentStore";
 import TocSidebar from "../features/toc/TocSidebar";
 import { useToast } from "./Toast";
 
 type Tab = "toc" | "notes" | "recent" | "settings";
+
+// ── File tree types & helpers ──────────────────────────────────
+
+interface FileNode {
+  name: string;
+  isDir: boolean;
+  children: FileNode[];
+  document?: Document;
+}
+
+function buildFileTree(docs: Document[], folderPath: string): FileNode[] {
+  const root: FileNode = {
+    name: folderPath.split("/").pop() ?? folderPath,
+    isDir: true,
+    children: [],
+  };
+
+  for (const doc of docs) {
+    if (!doc.file_path.startsWith(folderPath)) continue;
+    let rel = doc.file_path.slice(folderPath.length);
+    if (rel.startsWith("/")) rel = rel.slice(1);
+    const parts = rel.split("/");
+    if (parts.length === 0) continue;
+
+    let cur = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      let child = cur.children.find((c) => c.name === parts[i] && c.isDir);
+      if (!child) {
+        child = { name: parts[i], isDir: true, children: [] };
+        cur.children.push(child);
+      }
+      cur = child;
+    }
+    cur.children.push({
+      name: parts[parts.length - 1],
+      isDir: false,
+      children: [],
+      document: doc,
+    });
+  }
+
+  const sortNodes = (nodes: FileNode[]) => {
+    nodes.sort((a, b) => {
+      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    nodes.forEach((n) => { if (n.isDir) sortNodes(n.children); });
+  };
+  sortNodes(root.children);
+
+  return root.children;
+}
+
+function FileTreeView({ nodes, currentId, onSelect }: {
+  nodes: FileNode[];
+  currentId: string | null;
+  onSelect: (doc: Document) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {nodes.map((node, i) => (
+        <TreeNodeItem key={node.name + i} node={node} depth={0} currentId={currentId} onSelect={onSelect} />
+      ))}
+    </div>
+  );
+}
+
+function TreeNodeItem({ node, depth, currentId, onSelect }: {
+  node: FileNode;
+  depth: number;
+  currentId: string | null;
+  onSelect: (doc: Document) => void;
+}) {
+  const [expanded, setExpanded] = useState(depth < 1);
+
+  if (!node.isDir) {
+    const isActive = node.document?.id === currentId;
+    return (
+      <button
+        onClick={() => node.document && onSelect(node.document)}
+        style={{
+          display: "block", width: "100%", padding: "4px 10px 4px 6px", textAlign: "left",
+          paddingLeft: 6 + depth * 16,
+          background: isActive ? "var(--accent-color)" : "transparent",
+          color: isActive ? "#fff" : "var(--text-primary)",
+          border: "none", borderRadius: 2, fontSize: 12, cursor: "pointer",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}
+        title={node.name}
+      >
+        📄 {node.name}
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: "block", width: "100%", padding: "4px 10px 4px 6px", textAlign: "left",
+          paddingLeft: 6 + depth * 16,
+          background: "transparent", color: "var(--text-primary)",
+          border: "none", borderRadius: 2, fontSize: 12, fontWeight: 500, cursor: "pointer",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}
+        title={node.name}
+      >
+        {expanded ? "▼" : "▶"} 📁 {node.name}
+      </button>
+      {expanded && node.children.map((child, i) => (
+        <TreeNodeItem key={child.name + i} node={child} depth={depth + 1} currentId={currentId} onSelect={onSelect} />
+      ))}
+    </div>
+  );
+}
+
+// ── End file tree helpers ──────────────────────────────────────
 
 // Format annotations as Markdown for export
 function annotationsToMarkdown(annotations: Annotation[], docTitle: string | null): string {
@@ -142,7 +261,7 @@ export default function LeftSidebar() {
                 <div>
                   {libraryFolder && (
                     <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, padding: "0 4px" }}>
-                      📁 Watching: {libraryFolder.split("/").pop() ?? libraryFolder}
+                      📁 {libraryFolder.split("/").pop() ?? libraryFolder}
                     </p>
                   )}
                   {docsLoading ? (
@@ -155,6 +274,12 @@ export default function LeftSidebar() {
               <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
                 No PDFs opened yet. Click "Open PDF" to get started.
               </p>
+            ) : libraryFolder ? (
+              <FileTreeView
+                nodes={buildFileTree(documents, libraryFolder)}
+                currentId={currentDocument?.id ?? null}
+                onSelect={handleOpenDocument}
+              />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {documents.map((doc) => (
