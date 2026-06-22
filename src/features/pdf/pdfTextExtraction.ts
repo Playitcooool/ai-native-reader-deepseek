@@ -65,6 +65,8 @@ export class PageExtractionQueue {
   private processing = false;
   private destroyed = false;
   private extracted = new Set<number>();
+  /** Pages confirmed to have no text layer (scanned). OCR triggered on demand. */
+  noTextPages = new Set<number>();
   private buffer: { pageNumber: number; text: string }[] = [];
   private totalPages = 0;
   private batchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -110,7 +112,7 @@ export class PageExtractionQueue {
    */
   addPage(pageNumber: number, priority: number): void {
     if (this.destroyed) return;
-    if (this.extracted.has(pageNumber)) return;
+    if (this.extracted.has(pageNumber) || this.noTextPages.has(pageNumber)) return;
     const existing = this.queue.get(pageNumber);
     if (existing !== undefined && existing <= priority) return;
     this.queue.set(pageNumber, priority);
@@ -137,7 +139,7 @@ export class PageExtractionQueue {
    */
   enqueueAll(totalPages: number): void {
     for (let i = 1; i <= totalPages; i++) {
-      if (!this.extracted.has(i) && !this.queue.has(i)) {
+      if (!this.extracted.has(i) && !this.noTextPages.has(i) && !this.queue.has(i)) {
         this.queue.set(i, 4);
       }
     }
@@ -165,10 +167,15 @@ export class PageExtractionQueue {
       try {
         const result = await extractPageText(this.pdf, pageNumber);
         if (this.destroyed) return;
-        this.extracted.add(pageNumber);
-        this.buffer.push({ pageNumber, text: result.text });
-        this.scheduleFlush();
-        this.onProgress?.(this.extracted.size, this.totalPages);
+        if (result.text.trim()) {
+          this.extracted.add(pageNumber);
+          this.buffer.push({ pageNumber, text: result.text });
+          this.scheduleFlush();
+          this.onProgress?.(this.extracted.size, this.totalPages);
+        } else {
+          // Scanned page — no text layer. OCR triggered on demand by AI workflow.
+          this.noTextPages.add(pageNumber);
+        }
       } catch (err) {
         if (this.destroyed) return;
         console.warn(`Failed to extract page ${pageNumber}:`, err);

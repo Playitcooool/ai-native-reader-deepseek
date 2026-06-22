@@ -4,7 +4,7 @@ import { PDFDocumentProxy } from "pdfjs-dist";
 import "../pdfjs";
 import { useDocumentStore } from "../stores/documentStore";
 import { useSettingsStore } from "../stores/settingsStore";
-import { useAiStore } from "../stores/aiStore";
+import { useAiStore, setOcrPdfRef } from "../stores/aiStore";
 import { invoke } from "@tauri-apps/api/core";
 import { extractToc, type TocNodeInput } from "../features/toc/tocTree";
 import { PageExtractionQueue } from "../features/pdf/pdfTextExtraction";
@@ -146,6 +146,7 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
         const pdf = await loadingTask.promise;
         if (destroyed) { pdf.destroy(); return; }
         pdfRef.current = pdf;
+        setOcrPdfRef(pdf);
         setTotalPages(pdf.numPages);
         setPageCount(pdf.numPages);
         invoke("update_page_count", { documentId, pageCount: pdf.numPages }).catch(() => {});

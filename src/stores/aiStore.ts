@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { createWorker } from "tesseract.js";
 
 export interface AiMessage {
   id: string;
@@ -40,6 +41,35 @@ interface AiState {
   loadSessionMessages: (sessionId: string) => Promise<void>;
 }
 
+/** Pdfjs document proxy — set by PdfViewer on load, used by OCR fallback. */
+let ocrPdfRef: any = null;
+let ocrWorker: any = null;
+
+/** Set the pdfjs document for on-demand OCR (called from PdfViewer). */
+export function setOcrPdfRef(pdf: any) { ocrPdfRef = pdf; }
+
+/** Run OCR on a single page using Tesseract.js. Saves text via IPC on success. */
+async function ocrPage(documentId: string, pageNumber: number): Promise<void> {
+  if (!ocrPdfRef) return;
+  try {
+    const worker = ocrWorker ?? (ocrWorker = await createWorker("eng"));
+    const page = await ocrPdfRef.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2 }); // 2x for better OCR accuracy
+    const canvas = new OffscreenCanvas(viewport.width, viewport.height);
+    const ctx = canvas.getContext("2d")!;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    page.cleanup();
+
+    const { data } = await worker.recognize(canvas);
+    const text = data.text.trim();
+    if (text) {
+      await invoke("save_page_text", { documentId, pageNumber, text });
+    }
+  } catch (err) {
+    console.warn(`OCR failed for page ${pageNumber}:`, err);
+  }
+}
+
 let cancelFlag = false;
 let streamBuffer = "";
 let streamTimer: ReturnType<typeof setTimeout> | null = null;
@@ -48,9 +78,10 @@ let streamTimer: ReturnType<typeof setTimeout> | null = null;
 async function waitForPageText(
   documentId: string,
   pageNumber: number,
-  timeoutMs = 10000,
+  timeoutMs = 30000,
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
+  let ocrTriggered = false;
   while (Date.now() < deadline) {
     if (cancelFlag) return false;
     const result = await invoke<{ text: string | null } | null>("get_page_text", {
@@ -58,7 +89,14 @@ async function waitForPageText(
       pageNumber,
     });
     if (result?.text) return true;
-    await new Promise((r) => setTimeout(r, 100));
+
+    // After 1s of no text, assume scanned page and trigger OCR
+    if (!ocrTriggered && Date.now() - (deadline - timeoutMs) > 1000) {
+      ocrTriggered = true;
+      ocrPage(documentId, pageNumber).catch(() => {});
+    }
+
+    await new Promise((r) => setTimeout(r, 200));
   }
   console.warn(`waitForPageText: page ${pageNumber} not available after ${timeoutMs}ms`);
   return false;
