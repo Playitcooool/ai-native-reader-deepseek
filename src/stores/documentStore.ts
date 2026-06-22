@@ -101,7 +101,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     get().setDocuments(docs);
   },
   handleOpenFolder: async () => {
-    const selected = await open({ directory: true, multiple: false });
+    const selected = await open({ directory: true, multiple: false, recursive: true });
     if (!selected) return;
     await invoke("set_library_folder", { path: selected });
     get().setLibraryFolder(selected);

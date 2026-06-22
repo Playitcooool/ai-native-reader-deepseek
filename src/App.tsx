@@ -9,6 +9,7 @@ const CenterViewer = lazy(() => import("./components/CenterViewer"));
 const AiSidebar = lazy(() => import("./components/AiSidebar"));
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { ProviderSettings } from "./stores/settingsStore";
 import type { Document } from "./stores/documentStore";
 
@@ -18,6 +19,8 @@ function App() {
   const handleOpenPdf = useDocumentStore((s) => s.handleOpenPdf);
   const handleOpenFolder = useDocumentStore((s) => s.handleOpenFolder);
   const setCurrentDocument = useDocumentStore((s) => s.setCurrentDocument);
+  const setDocuments = useDocumentStore((s) => s.setDocuments);
+  const setLibraryFolder = useDocumentStore((s) => s.setLibraryFolder);
   const theme = useSettingsStore((s) => s.theme);
 
   useEffect(() => {
@@ -36,8 +39,27 @@ function App() {
 
   // Auto-restore last opened document on startup
   useEffect(() => {
-    invoke<Document[]>("get_documents")
-      .then((docs) => {
+    let cancelled = false;
+    (async () => {
+      try {
+        let docs = await invoke<Document[]>("get_documents");
+        const libraryFolder = await invoke<string | null>("get_library_folder");
+        if (docs.length > 0) {
+          const folder = await open({
+            title: "Choose your PDF folder to grant access",
+            directory: true,
+            multiple: false,
+            recursive: true,
+            defaultPath: libraryFolder ?? parentDir(docs[0].file_path),
+          });
+          if (typeof folder === "string") {
+            await invoke("set_library_folder", { path: folder });
+            setLibraryFolder(folder);
+            docs = await invoke<Document[]>("get_documents");
+            setDocuments(docs);
+          }
+        }
+        if (cancelled) return;
         if (docs && docs.length > 0) {
           const sorted = [...docs].sort(
             (a, b) =>
@@ -48,9 +70,12 @@ function App() {
             setCurrentDocument(sorted[0]);
           }
         }
-      })
-      .catch(() => addToast({ type: "error", message: "Failed to restore last document." }));
-  }, [setCurrentDocument, addToast]);
+      } catch {
+        if (!cancelled) addToast({ type: "error", message: "Failed to restore last document." });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [setCurrentDocument, setDocuments, setLibraryFolder, addToast]);
 
   // Listen for native menu File > Open PDF (Cmd+O)
   useEffect(() => {
@@ -169,3 +194,8 @@ function App() {
 }
 
 export default App;
+
+function parentDir(path: string): string {
+  const idx = path.lastIndexOf("/");
+  return idx > 0 ? path.slice(0, idx) : path;
+}
