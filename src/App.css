@@ -152,6 +152,7 @@
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
+  position: relative;
 }
 
 .splitter {
