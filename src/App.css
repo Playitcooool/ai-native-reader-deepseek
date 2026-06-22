@@ -188,23 +188,6 @@
   width: 300px;
 }
 
-.reader-chrome {
-  position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 30;
-  display: flex;
-  gap: 8px;
-  padding: 5px;
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-primary) 78%, transparent);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.11);
-  backdrop-filter: blur(18px);
-}
-
-.reader-chrome button,
 .library-actions button {
   display: inline-flex;
   align-items: center;
@@ -218,7 +201,6 @@
   font-weight: 600;
 }
 
-.reader-chrome button:hover,
 .library-actions button:hover,
 .book-card:hover {
   background: color-mix(in srgb, var(--text-primary) 7%, transparent);
@@ -347,7 +329,7 @@
   display: grid;
   place-items: end start;
   aspect-ratio: 0.68;
-  padding: 16px;
+  padding: 0;
   background:
     radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.5), transparent 28%),
     linear-gradient(160deg, #d98c4a, #9d4c25 54%, #3c2418);
@@ -357,12 +339,21 @@
   font-weight: 700;
   letter-spacing: 0;
   box-shadow: 0 13px 24px rgba(0, 0, 0, 0.18), inset 8px 0 13px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
 }
 
 .book-cover span {
+  margin: 16px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 999px;
   padding: 3px 7px;
+}
+
+.book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
 }
 
 .book-title {
@@ -552,6 +543,7 @@
 
 .reader-toolbar,
 .search-bar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -564,6 +556,7 @@
 
 .icon-button,
 .zoom-reset,
+.toolbar-text-button,
 .search-bar button {
   display: inline-flex;
   align-items: center;
@@ -580,9 +573,24 @@
 
 .icon-button:hover,
 .zoom-reset:hover,
+.toolbar-text-button:hover,
 .search-bar button:hover {
   background: color-mix(in srgb, var(--text-primary) 7%, transparent);
   color: var(--text-primary);
+}
+
+.toolbar-text-button {
+  gap: 7px;
+  padding: 0 11px;
+}
+
+.toolbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .icon-button.active {

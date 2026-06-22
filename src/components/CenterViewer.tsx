@@ -1,8 +1,23 @@
-import { useDocumentStore } from "../stores/documentStore";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import * as pdfjsLib from "pdfjs-dist";
+import "../pdfjs";
+import { documentDisplayTitle, type Document, useDocumentStore } from "../stores/documentStore";
 import PdfViewer from "./PdfViewer";
 import { useToast } from "./Toast";
 
-export default function CenterViewer({ onOpenAi }: { onOpenAi?: (draft?: string) => void }) {
+const coverCache = new Map<string, string>();
+let coverQueue = Promise.resolve();
+
+export default function CenterViewer({
+  onBackHome,
+  onOpenLibrary,
+  onOpenAi,
+}: {
+  onBackHome?: () => void;
+  onOpenLibrary?: () => void;
+  onOpenAi?: (draft?: string) => void;
+}) {
   const { documents, currentDocument, handleOpenPdf, handleOpenFolder, setCurrentDocument } = useDocumentStore();
   const { addToast } = useToast();
 
@@ -10,11 +25,13 @@ export default function CenterViewer({ onOpenAi }: { onOpenAi?: (draft?: string)
     return (
       <>
         <h1 style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}>
-          {currentDocument.title ?? currentDocument.original_filename}
+          {documentDisplayTitle(currentDocument)}
         </h1>
         <PdfViewer
           key={currentDocument.id}
           documentId={currentDocument.id}
+          onBackHome={onBackHome}
+          onOpenLibrary={onOpenLibrary}
           onOpenAi={onOpenAi}
         />
       </>
@@ -48,10 +65,8 @@ export default function CenterViewer({ onOpenAi }: { onOpenAi?: (draft?: string)
         ) : (
           documents.map((doc) => (
             <button key={doc.id} className="book-card" onClick={() => setCurrentDocument(doc)}>
-              <span className="book-cover" aria-hidden="true">
-                <span>PDF</span>
-              </span>
-              <span className="book-title">{doc.title ?? doc.original_filename}</span>
+              <BookCover doc={doc} />
+              <span className="book-title">{documentDisplayTitle(doc)}</span>
               <span className="book-meta">
                 {doc.last_page ? `Page ${doc.last_page}` : doc.page_count ? `${doc.page_count} pages` : "Ready"}
               </span>
@@ -61,4 +76,62 @@ export default function CenterViewer({ onOpenAi }: { onOpenAi?: (draft?: string)
       </div>
     </div>
   );
+}
+
+function BookCover({ doc }: { doc: Document }) {
+  const [src, setSrc] = useState(() => coverCache.get(doc.id));
+
+  useEffect(() => {
+    let cancelled = false;
+    const cached = coverCache.get(doc.id);
+    if (cached) {
+      setSrc(cached);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      coverQueue = coverQueue
+        .then(() => renderCover(doc.id))
+        .then((cover) => {
+          if (!cover || cancelled) return;
+          coverCache.set(doc.id, cover);
+          setSrc(cover);
+        })
+        .catch(() => {});
+    }, 120);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [doc.id]);
+
+  return (
+    <span className="book-cover" aria-hidden="true">
+      {src ? <img src={src} alt="" /> : <span>PDF</span>}
+    </span>
+  );
+}
+
+async function renderCover(documentId: string): Promise<string | null> {
+  const data = await invoke<number[] | Uint8Array>("read_document_pdf", { documentId });
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
+  try {
+    const page = await pdf.getPage(1);
+    try {
+      const viewport = page.getViewport({ scale: 1 });
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const scale = 320 / viewport.width;
+      const renderViewport = page.getViewport({ scale: scale * dpr });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.floor(renderViewport.width);
+      canvas.height = Math.floor(renderViewport.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
+      return canvas.toDataURL("image/png");
+    } finally {
+      page.cleanup();
+    }
+  } finally {
+    pdf.destroy();
+  }
 }

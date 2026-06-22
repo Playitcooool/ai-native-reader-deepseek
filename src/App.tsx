@@ -3,7 +3,7 @@ import LeftSidebar from "./components/LeftSidebar";
 import { ToastProvider, useToast } from "./components/Toast";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useDocumentStore } from "./stores/documentStore";
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, startTransition, useCallback, useEffect, useState } from "react";
 import { useAiStore } from "./stores/aiStore";
 import { useUndoStore } from "./stores/undoStore";
 
@@ -34,6 +34,12 @@ function App() {
     setAiOpen(true);
     if (draft) setAiInputDraft(draft);
   }, []);
+
+  const goHome = useCallback(() => {
+    setAiOpen(false);
+    setLeftOpen(false);
+    startTransition(() => setCurrentDocument(null));
+  }, [setCurrentDocument]);
 
   const openLibraryPanel = useCallback(() => {
     setAiOpen(false);
@@ -136,21 +142,9 @@ function App() {
             <LeftSidebar />
           </div>
         )}
-        {currentDocument && (
-          <div className="reader-chrome" aria-label="Reader controls">
-            <button onClick={openLibraryPanel} aria-label="Open library">
-              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h11" /><path d="M6 17h13" /><path d="M6 21h13V7H6a2 2 0 0 0 0 4" /></svg>
-              Library
-            </button>
-            <button onClick={() => openAiPanel()} aria-label="Open AI assistant">
-              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a7 7 0 0 1 7 7c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 7-7Z" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
-              Ask
-            </button>
-          </div>
-        )}
         <div className="center-viewer">
           <Suspense fallback={<div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading…</div>}>
-            <CenterViewer onOpenAi={openAiPanel} />
+            <CenterViewer onBackHome={goHome} onOpenLibrary={openLibraryPanel} onOpenAi={openAiPanel} />
           </Suspense>
         </div>
         {leftOpen && (

@@ -19,6 +19,10 @@ export interface Document {
   has_native_toc: boolean | null;
 }
 
+export function documentDisplayTitle(doc: Pick<Document, "title" | "original_filename" | "file_path">): string {
+  return doc.title?.trim() || doc.original_filename?.trim() || doc.file_path.split("/").pop() || "Untitled";
+}
+
 interface DocumentState {
   documents: Document[];
   currentDocument: Document | null;

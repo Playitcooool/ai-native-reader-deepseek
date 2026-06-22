@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import * as pdfjsLib from "pdfjs-dist";
 import { PDFDocumentProxy } from "pdfjs-dist";
 import "../pdfjs";
-import { useDocumentStore } from "../stores/documentStore";
+import { documentDisplayTitle, useDocumentStore } from "../stores/documentStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useAiStore, setOcrPdfRef } from "../stores/aiStore";
 import { invoke } from "@tauri-apps/api/core";
@@ -16,13 +16,16 @@ import ShortcutsModal from "./ShortcutsModal";
 
 interface PdfViewerProps {
   documentId: string;
+  onBackHome?: () => void;
+  onOpenLibrary?: () => void;
   onOpenAi?: (draft?: string) => void;
 }
 
-function Icon({ name }: { name: "books" | "ask" | "prev" | "next" | "search" | "moon" | "sun" | "minus" | "plus" | "close" }) {
+function Icon({ name }: { name: "home" | "books" | "ask" | "prev" | "next" | "search" | "moon" | "sun" | "minus" | "plus" | "close" }) {
   const common = { width: 17, height: 17, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   const paths = {
     books: <><path d="M4 19.5V5a2 2 0 0 1 2-2h11" /><path d="M6 17h13" /><path d="M6 21h13V7H6a2 2 0 0 0 0 4" /></>,
+    home: <><path d="m15 18-6-6 6-6" /><path d="M20 12H9" /><path d="M5 19V5" /></>,
     ask: <><path d="M12 3a7 7 0 0 1 7 7c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 7-7Z" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
     prev: <><path d="m15 18-6-6 6-6" /></>,
     next: <><path d="m9 18 6-6-6-6" /></>,
@@ -36,7 +39,7 @@ function Icon({ name }: { name: "books" | "ask" | "prev" | "next" | "search" | "
   return <svg aria-hidden="true" {...common}>{paths[name]}</svg>;
 }
 
-export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
+export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpenAi }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectionText, setSelectionText] = useState("");
@@ -271,9 +274,6 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
     window.getSelection()?.removeAllRanges();
   }, []);
 
-  // Open another PDF
-  const handleOpenPdf = useDocumentStore((s) => s.handleOpenPdf);
-
   // Handle Explain action
   const handleExplain = useCallback(async () => {
     if (!currentDocument || !selectionText) return;
@@ -283,7 +283,7 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
     try {
       await runWorkflow({
         documentId: currentDocument.id,
-        documentTitle: currentDocument.title ?? undefined,
+        documentTitle: documentDisplayTitle(currentDocument),
         mode: "selection_explain",
         pageNumber: currentPage,
         selectedText: text,
@@ -432,11 +432,9 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
     <div className="pdf-viewer">
       {/* Toolbar */}
       <div className="reader-toolbar">
-        <button className="icon-button" onClick={() => { handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." })); clearSelection(); }} title="Open PDF (Cmd+O)" aria-label="Open PDF">
-          <Icon name="books" />
-        </button>
-        <button className="icon-button" onClick={() => onOpenAi?.()} title="Ask AI about this document" aria-label="Ask AI">
-          <Icon name="ask" />
+        <button className="toolbar-text-button" onClick={onBackHome} aria-label="Back to home">
+          <Icon name="home" />
+          Back to home
         </button>
         <span className="toolbar-divider" />
         <button className="icon-button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page"><Icon name="prev" /></button>
@@ -454,6 +452,16 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
         <button className="icon-button" onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Switch to light/dark mode (Cmd+Shift+T)" aria-label="Toggle theme">
           <Icon name={theme === "light" ? "moon" : "sun"} />
         </button>
+        <span className="toolbar-center">
+          <button className="toolbar-text-button" onClick={onOpenLibrary} aria-label="Open library">
+            <Icon name="books" />
+            Library
+          </button>
+          <button className="toolbar-text-button" onClick={() => onOpenAi?.()} aria-label="Open AI assistant">
+            <Icon name="ask" />
+            Ask
+          </button>
+        </span>
         <span className="toolbar-spacer" />
         <button className="icon-button" onClick={() => handleSetZoom(zoom - 0.25)} disabled={zoom <= 0.25} aria-label="Zoom out"><Icon name="minus" /></button>
         <button className="zoom-reset" onClick={() => handleSetZoom(1.0)}>{Math.round(zoom * 100)}%</button>

@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import SettingsPanel from "./SettingsPanel";
-import { useDocumentStore } from "../stores/documentStore";
+import { documentDisplayTitle, useDocumentStore } from "../stores/documentStore";
 import { useNotesStore } from "../stores/notesStore";
 import type { Annotation } from "../stores/notesStore";
 import type { Document } from "../stores/documentStore";
@@ -229,9 +229,9 @@ export default function LeftSidebar() {
     if (notes.length === 0 || isExporting) return;
     setIsExporting(true);
     try {
-      const md = annotationsToMarkdown(notes, currentDocument?.title ?? null);
+      const md = annotationsToMarkdown(notes, currentDocument ? documentDisplayTitle(currentDocument) : null);
       const filePath = await save({
-        defaultPath: `${currentDocument?.title ?? "notes"}.md`,
+        defaultPath: `${currentDocument ? documentDisplayTitle(currentDocument) : "notes"}.md`,
         filters: [{ name: "Markdown", extensions: ["md"] }],
       });
       if (filePath) {
@@ -331,7 +331,7 @@ export default function LeftSidebar() {
                           color: currentDocument?.id === doc.id ? "#fff" : "var(--text-primary)",
                           border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 12, cursor: "pointer",
                         }}>
-                          <div style={{ fontWeight: 500 }}>{doc.title ?? doc.original_filename}</div>
+                          <div style={{ fontWeight: 500 }}>{documentDisplayTitle(doc)}</div>
                         </button>
                       ))}
                     </div>
@@ -351,7 +351,7 @@ export default function LeftSidebar() {
                       border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, cursor: "pointer",
                     }}
                   >
-                    <div style={{ fontWeight: 500 }}>{doc.title ?? doc.original_filename}</div>
+                    <div style={{ fontWeight: 500 }}>{documentDisplayTitle(doc)}</div>
                   </button>
                 ))}
               </div>

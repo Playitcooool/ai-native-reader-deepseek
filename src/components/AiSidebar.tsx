@@ -1,5 +1,5 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
-import { useDocumentStore } from "../stores/documentStore";
+import { documentDisplayTitle, useDocumentStore } from "../stores/documentStore";
 import { type AiMessage, useAiStore } from "../stores/aiStore";
 import { useUndoStore } from "../stores/undoStore";
 import ReactMarkdown from "react-markdown";
@@ -72,7 +72,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
     try {
       await runWorkflow({
         documentId: currentDocument.id,
-        documentTitle: currentDocument.title ?? undefined,
+        documentTitle: documentDisplayTitle(currentDocument),
         mode: "selection_explain",
         pageNumber: currentPage,
         selectedText: sel,
@@ -87,7 +87,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
     try {
       await runWorkflow({
         documentId: currentDocument.id,
-        documentTitle: currentDocument.title ?? undefined,
+        documentTitle: documentDisplayTitle(currentDocument),
         mode: "page_summary",
         pageNumber: currentPage,
       });
@@ -106,7 +106,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
     try {
       await runWorkflow({
         documentId: currentDocument.id,
-        documentTitle: currentDocument.title ?? undefined,
+        documentTitle: documentDisplayTitle(currentDocument),
         mode: "range_summary",
         pageNumber: currentPage,
         startPage: sp,
@@ -124,7 +124,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
     try {
       await runWorkflow({
         documentId: currentDocument.id,
-        documentTitle: currentDocument.title ?? undefined,
+        documentTitle: documentDisplayTitle(currentDocument),
         mode: "chapter_qa",
         pageNumber: currentPage,
         question,
@@ -166,7 +166,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
       try {
         await runWorkflow({
           documentId: currentDocument.id,
-          documentTitle: currentDocument.title ?? undefined,
+          documentTitle: documentDisplayTitle(currentDocument),
           mode: "chapter_qa",
           pageNumber: msg.page_number ?? currentPage,
           question: "Continue from where you left off. Don't repeat what you already said.",
