@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tauri::Emitter;
 use tauri::State;
 use uuid::Uuid;
 use chrono::Utc;
@@ -522,6 +523,7 @@ pub struct AiWorkflowResult {
 
 #[tauri::command]
 pub async fn run_ai_workflow(
+    app: tauri::AppHandle,
     db: State<'_, DbState>,
     input: RunAiWorkflowInput,
 ) -> Result<AiWorkflowResult, String> {
@@ -630,22 +632,22 @@ pub async fn run_ai_workflow(
         }
     };
 
-    // 5. Call AI provider
-    let answer = provider::chat_completion(
-        &base_url.ok_or("Missing base_url")?,
-        &api_key.ok_or("Missing api_key")?,
+    // 5. Call AI provider with streaming
+    let base_url = base_url.ok_or("Missing base_url")?;
+    let api_key = api_key.ok_or("Missing api_key")?;
+    let answer = provider::chat_completion_stream(
+        &base_url,
+        &api_key,
         &model,
         messages,
         Some(0.3),
         Some(4096),
+        |token| {
+            app.emit("ai-stream-chunk", serde_json::json!({"token": token})).ok();
+        },
     )
     .await
-    .map_err(|e| format!("AI request failed: {}", e))?
-    .choices
-    .into_iter()
-    .next()
-    .map(|c| c.message.content)
-    .unwrap_or_default();
+    .map_err(|e| format!("AI request failed: {}", e))?;
 
     if answer.is_empty() {
         return Err("AI returned empty response".to_string());
@@ -672,7 +674,7 @@ pub async fn run_ai_workflow(
         conn.execute(
             "INSERT INTO ai_messages (id, session_id, role, content, page_number, context_snapshot_json, created_at)
              VALUES (?1, ?2, 'user', ?3, ?4, ?5, ?6)",
-            rusqlite::params![user_msg_id, session_id, input.selected_text.as_deref().unwrap_or(&input.mode),
+            rusqlite::params![user_msg_id, session_id, input.selected_text.as_deref().or(input.question.as_deref()).unwrap_or(&input.mode),
                 input.page_number, context_json, now],
         )
         .map_err(|e| e.to_string())?;
@@ -692,6 +694,12 @@ pub async fn run_ai_workflow(
         )
         .map_err(|e| e.to_string())?;
     }
+
+    // 7. Signal streaming complete
+    app.emit("ai-stream-end", serde_json::json!({
+        "message_id": assistant_msg_id,
+        "session_id": session_id,
+    })).ok();
 
     Ok(AiWorkflowResult {
         message_id: assistant_msg_id,

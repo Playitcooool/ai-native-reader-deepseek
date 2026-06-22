@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface AiMessage {
   id: string;
@@ -16,11 +17,13 @@ interface AiState {
   messages: AiMessage[];
   sessionId: string | null;
   isGenerating: boolean;
+  streamingContent: string;
   lastWorkflowInput: Record<string, any> | null;
   setSessionId: (id: string | null) => void;
   addMessage: (msg: AiMessage) => void;
   setMessages: (msgs: AiMessage[]) => void;
   setGenerating: (g: boolean) => void;
+  setStreamingContent: (content: string) => void;
   runWorkflow: (input: {
     documentId: string;
     documentTitle?: string;
@@ -39,15 +42,25 @@ export const useAiStore = create<AiState>((set, get) => ({
   messages: [],
   sessionId: null,
   isGenerating: false,
+  streamingContent: "",
   lastWorkflowInput: null,
   setSessionId: (id) => set({ sessionId: id }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   setMessages: (msgs) => set({ messages: msgs }),
   setGenerating: (g) => set({ isGenerating: g }),
+  setStreamingContent: (content) => set({ streamingContent: content }),
 
   runWorkflow: async (input) => {
-    set({ isGenerating: true, lastWorkflowInput: input as Record<string, any> });
+    set({ isGenerating: true, streamingContent: "", lastWorkflowInput: input as Record<string, any> });
+
+    let unlisten: UnlistenFn | null = null;
+
     try {
+      // Listen for streaming tokens from backend
+      unlisten = await listen<{ token: string }>("ai-stream-chunk", (event) => {
+        set((s) => ({ streamingContent: s.streamingContent + event.payload.token }));
+      });
+
       const result = await invoke<{
         message_id: string;
         session_id: string;
@@ -75,7 +88,7 @@ export const useAiStore = create<AiState>((set, get) => ({
         id: `user_${Date.now()}`,
         session_id: result.session_id,
         role: "user",
-        content: input.selectedText ?? input.mode,
+        content: input.selectedText ?? input.question ?? input.mode,
         page_number: input.pageNumber,
         context_snapshot_json: null,
         citations_json: null,
@@ -94,11 +107,16 @@ export const useAiStore = create<AiState>((set, get) => ({
 
       set((s) => ({
         messages: [...s.messages, userMsg, asstMsg],
+        streamingContent: "",
       }));
 
       return result.answer_md;
+    } catch (err) {
+      console.error("aiStore.runWorkflow failed:", err);
+      throw err;
     } finally {
-      set({ isGenerating: false });
+      unlisten?.();
+      set({ isGenerating: false, streamingContent: "" });
     }
   },
 

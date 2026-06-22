@@ -30,11 +30,12 @@ export default function SettingsPanel() {
     setStatus(null);
     try {
       const input: ProviderSettingsInput = {
+        id: editingId ?? undefined,
         provider_type: providerType,
         base_url: baseUrl || undefined,
         api_key: apiKey || undefined,
         model,
-        is_default: settings.length === 0,
+        is_default: true,
       };
       const result = await invoke<{
         id: string; provider_type: string; base_url: string | null;

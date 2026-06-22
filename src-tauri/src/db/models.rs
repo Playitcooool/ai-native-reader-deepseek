@@ -31,6 +31,8 @@ pub struct ProviderSettings {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProviderSettingsInput {
+    /// If set, UPDATE this existing row; otherwise INSERT.
+    pub id: Option<String>,
     pub provider_type: String,
     pub base_url: Option<String>,
     pub api_key: Option<String>,

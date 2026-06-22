@@ -33,7 +33,7 @@ pub fn run() {
                 db::migrations::initialize_database(&db_path).expect("failed to initialize database");
             app.manage(DbState(Mutex::new(conn)));
 
-            // Build native menu: File > Open PDF (Cmd+O), Quit
+            // Build native menus
             let open = MenuItemBuilder::with_id("open_pdf", "Open PDF…")
                 .accelerator("CmdOrCtrl+O")
                 .build(app)?;
@@ -45,7 +45,20 @@ pub fn run() {
                 .separator()
                 .item(&quit)
                 .build()?;
-            let menu = MenuBuilder::new(app).item(&file_menu).build()?;
+
+            // macOS routes Cmd+C/V/X/A through the menu system; without an Edit
+            // submenu these shortcuts don't reach webview text inputs.
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+
+            let menu = MenuBuilder::new(app).item(&file_menu).item(&edit_menu).build()?;
             app.set_menu(menu)?;
 
             Ok(())

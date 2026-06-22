@@ -12,6 +12,7 @@ export interface ProviderSettings {
 }
 
 export interface ProviderSettingsInput {
+  id?: string;
   provider_type: string;
   base_url?: string;
   api_key?: string;

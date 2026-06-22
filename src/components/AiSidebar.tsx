@@ -7,7 +7,7 @@ import { useToast } from "./Toast";
 
 export default function AiSidebar() {
   const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
-  const { messages, isGenerating, runWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
+  const { messages, isGenerating, streamingContent, runWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
@@ -34,8 +34,8 @@ export default function AiSidebar() {
         pageNumber: currentPage,
         selectedText: sel,
       });
-    } catch {
-      addToast({ type: "error", message: "AI explanation failed." });
+    } catch (err) {
+      addToast({ type: "error", message: `AI explanation failed: ${err}` });
     }
   }, [currentDocument, currentPage, runWorkflow, addToast]);
 
@@ -48,8 +48,8 @@ export default function AiSidebar() {
         mode: "page_summary",
         pageNumber: currentPage,
       });
-    } catch {
-      addToast({ type: "error", message: "AI summarization failed." });
+    } catch (err) {
+      addToast({ type: "error", message: `AI summarization failed: ${err}` });
     }
   }, [currentDocument, currentPage, runWorkflow, addToast]);
 
@@ -64,8 +64,8 @@ export default function AiSidebar() {
         startPage: parseInt(rangeStart),
         endPage: parseInt(rangeEnd),
       });
-    } catch {
-      addToast({ type: "error", message: "AI range summarization failed." });
+    } catch (err) {
+      addToast({ type: "error", message: `AI range summarization failed: ${err}` });
     }
   }, [currentDocument, currentPage, rangeStart, rangeEnd, runWorkflow, addToast]);
 
@@ -81,8 +81,8 @@ export default function AiSidebar() {
         pageNumber: currentPage,
         question,
       });
-    } catch {
-      addToast({ type: "error", message: "AI request failed." });
+    } catch (err) {
+      addToast({ type: "error", message: `AI request failed: ${err}` });
     }
   }, [currentDocument, currentPage, input, runWorkflow, addToast]);
 
@@ -195,7 +195,7 @@ export default function AiSidebar() {
           Explain
         </button>
         {lastWorkflowInput && !isGenerating && (
-          <button onClick={() => retryLastWorkflow().catch(() => addToast({ type: "error", message: "AI retry failed." }))}
+          <button onClick={() => retryLastWorkflow().catch((err) => addToast({ type: "error", message: `AI retry failed: ${err}` }))}
             style={{ padding: "2px 6px", fontSize: 11, background: "transparent", color: "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: 3, cursor: "pointer" }}>
             ↻ Retry
           </button>
@@ -264,7 +264,21 @@ export default function AiSidebar() {
             )}
           </div>
         ))}
-        {isGenerating && (
+        {isGenerating && streamingContent && (
+          <div style={{
+            padding: "6px 8px", borderRadius: 4,
+            background: "var(--bg-primary)",
+            border: "1px solid var(--border-color)", fontSize: 12, lineHeight: 1.5,
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              AI
+            </div>
+            <div className="markdown-content">
+              <ReactMarkdown>{streamingContent}</ReactMarkdown>
+            </div>
+          </div>
+        )}
+        {isGenerating && !streamingContent && (
           <div style={{ padding: "8px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
             Thinking…
           </div>
