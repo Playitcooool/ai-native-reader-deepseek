@@ -51,6 +51,7 @@ pub struct TestResult {
 
 /// Call the OpenAI-compatible /chat/completions endpoint.
 pub async fn chat_completion(
+    client: &reqwest::Client,
     base_url: &str,
     api_key: &str,
     model: &str,
@@ -67,8 +68,6 @@ pub async fn chat_completion(
         max_tokens,
         stream: None,
     };
-
-    let client = reqwest::Client::new();
 
     let response = client
         .post(&url)
@@ -124,6 +123,7 @@ struct SseDelta {
 /// Calls `on_token` with each content token as it arrives.
 /// Returns the accumulated full text on success.
 pub async fn chat_completion_stream(
+    client: &reqwest::Client,
     base_url: &str,
     api_key: &str,
     model: &str,
@@ -141,8 +141,6 @@ pub async fn chat_completion_stream(
         max_tokens,
         stream: Some(true),
     };
-
-    let client = reqwest::Client::new();
     let response = client
         .post(&url)
         .header("Authorization", format!("Bearer {}", api_key))
@@ -212,6 +210,7 @@ pub async fn chat_completion_stream(
 
 /// Test an AI provider endpoint.
 pub async fn test_provider(
+    client: &reqwest::Client,
     base_url: &str,
     api_key: &str,
     model: &str,
@@ -229,7 +228,7 @@ pub async fn test_provider(
         },
     ];
 
-    match chat_completion(base_url, api_key, model, messages, Some(0.0), Some(10)).await {
+    match chat_completion(client, base_url, api_key, model, messages, Some(0.0), Some(10)).await {
         Ok(resp) => {
             let model_name = resp.choices.first().map(|c| c.message.content.clone());
             TestResult {

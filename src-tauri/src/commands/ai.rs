@@ -175,6 +175,7 @@ pub fn save_ai_message(
 
 #[tauri::command]
 pub async fn compact_session(
+    http_client: State<'_, reqwest::Client>,
     db: State<'_, DbState>,
     session_id: String,
 ) -> Result<AiSession, String> {
@@ -256,6 +257,7 @@ pub async fn compact_session(
 
     // Call AI for compaction
     let result = provider::chat_completion(
+        &http_client,
         &base_url,
         &api_key,
         &model,
@@ -524,6 +526,7 @@ pub struct AiWorkflowResult {
 #[tauri::command]
 pub async fn run_ai_workflow(
     app: tauri::AppHandle,
+    http_client: State<'_, reqwest::Client>,
     db: State<'_, DbState>,
     input: RunAiWorkflowInput,
 ) -> Result<AiWorkflowResult, String> {
@@ -535,12 +538,16 @@ pub async fn run_ai_workflow(
         (scope, sid)
     };
 
-    // 2. Build context
+    // 2. Build context & read provider settings (single DB lock)
     let title = input.document_title.as_deref().unwrap_or("Untitled");
 
-    let context_pack = {
+    let context_pack;
+    let (section_start, section_end);
+    let (base_url, api_key, model);
+    {
         let conn = db.0.lock().map_err(|e| e.to_string())?;
-        context_builder::build_context_pack_for_mode(
+
+        context_pack = context_builder::build_context_pack_for_mode(
             &conn,
             &input.document_id,
             title,
@@ -550,8 +557,60 @@ pub async fn run_ai_workflow(
             input.start_page,
             input.end_page,
             Some(&session_id),
-        )
-    };
+        );
+
+        // Read provider settings
+        let provider_row = {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT base_url, api_key, model FROM provider_settings WHERE is_default = 1 LIMIT 1",
+                )
+                .map_err(|e| e.to_string())?;
+            let mut rows = stmt
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                })
+                .map_err(|e| e.to_string())?;
+            match rows.next() {
+                Some(Ok(r)) => r,
+                _ => return Err("No default provider configured. Open Settings to add one.".to_string()),
+            }
+        };
+        let (bu, ak, m) = provider_row;
+        let base_url_val = bu.ok_or("Missing base_url")?;
+        let api_key_val = ak.ok_or("Missing api_key")?;
+        base_url = base_url_val;
+        api_key = api_key_val;
+        model = m;
+
+        // Look up section page range for chapter_qa
+        let toc_node_id = context_pack.hard_evidence.iter()
+            .find(|item| item.kind == "toc_breadcrumb")
+            .and_then(|item| item.toc_node_id.as_deref())
+            .map(|id| id.to_string());
+        section_start = if input.mode == "chapter_qa" {
+            if let Some(ref nid) = toc_node_id {
+                conn.query_row(
+                    "SELECT start_page FROM toc_nodes WHERE id = ?1",
+                    rusqlite::params![nid],
+                    |row| row.get::<_, i64>(0),
+                ).unwrap_or(input.page_number)
+            } else { input.page_number }
+        } else { 1 };
+        section_end = if input.mode == "chapter_qa" {
+            if let Some(ref nid) = toc_node_id {
+                conn.query_row(
+                    "SELECT COALESCE(end_page, start_page) FROM toc_nodes WHERE id = ?1",
+                    rusqlite::params![nid],
+                    |row| row.get::<_, i64>(0),
+                ).unwrap_or(input.page_number)
+            } else { input.page_number }
+        } else { 1 };
+    } // DB lock released here
 
     // 3. Build prompt messages
     let evidence_text = context_pack
@@ -561,10 +620,10 @@ pub async fn run_ai_workflow(
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    // Extract TOC breadcrumb and section info from context pack
-    let toc_breadcrumb = context_pack.hard_evidence.iter().find(|item| item.kind == "toc_breadcrumb");
-    let toc_path = toc_breadcrumb.map(|item| item.text.trim_start_matches("Section: ")).unwrap_or("");
-    let toc_node_id = toc_breadcrumb.and_then(|item| item.toc_node_id.as_deref());
+    let toc_path = context_pack.hard_evidence.iter()
+        .find(|item| item.kind == "toc_breadcrumb")
+        .map(|item| item.text.trim_start_matches("Section: "))
+        .unwrap_or("");
 
     let memory_text = context_pack
         .soft_memory
@@ -572,26 +631,6 @@ pub async fn run_ai_workflow(
         .map(|item| item.text.as_str())
         .collect::<Vec<_>>()
         .join("\n\n");
-
-    // For chapter_qa, look up the section page range from the TOC node
-    let (section_start, section_end) = if input.mode == "chapter_qa" {
-        if let Some(node_id) = toc_node_id {
-            if let Ok(conn) = db.0.lock() {
-                let range = conn.query_row(
-                    "SELECT start_page, COALESCE(end_page, start_page) FROM toc_nodes WHERE id = ?1",
-                    rusqlite::params![node_id],
-                    |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
-                ).unwrap_or((input.page_number, input.page_number));
-                range
-            } else {
-                (input.page_number, input.page_number)
-            }
-        } else {
-            (input.page_number, input.page_number)
-        }
-    } else {
-        (1, 1)
-    };
 
     let (system_prompt, user_prompt) = match input.mode.as_str() {
         "selection_explain" => {
@@ -635,33 +674,9 @@ pub async fn run_ai_workflow(
         content: user_prompt,
     });
 
-    // 4. Get provider settings
-    let (base_url, api_key, model) = {
-        let conn = db.0.lock().map_err(|e| e.to_string())?;
-        let mut stmt = conn
-            .prepare(
-                "SELECT base_url, api_key, model FROM provider_settings WHERE is_default = 1 LIMIT 1",
-            )
-            .map_err(|e| e.to_string())?;
-        let mut rows = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, Option<String>>(0)?,
-                    row.get::<_, Option<String>>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })
-            .map_err(|e| e.to_string())?;
-        match rows.next() {
-            Some(Ok(r)) => r,
-            _ => return Err("No default provider configured. Open Settings to add one.".to_string()),
-        }
-    };
-
-    // 5. Call AI provider with streaming
-    let base_url = base_url.ok_or("Missing base_url")?;
-    let api_key = api_key.ok_or("Missing api_key")?;
+    // 4. Call AI provider with streaming
     let answer = provider::chat_completion_stream(
+        &http_client,
         &base_url,
         &api_key,
         &model,

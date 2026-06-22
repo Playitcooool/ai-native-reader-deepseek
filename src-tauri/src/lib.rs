@@ -32,6 +32,7 @@ pub fn run() {
             let conn =
                 db::migrations::initialize_database(&db_path).expect("failed to initialize database");
             app.manage(DbState(Mutex::new(conn)));
+            app.manage(reqwest::Client::new());
 
             // Build native menus
             let open = MenuItemBuilder::with_id("open_pdf", "Open PDF…")

@@ -368,6 +368,23 @@ pub fn build_page_context(
                 soft_memory.push(t);
             }
         }
+
+        // Session summary
+        if let Some(summary) = get_session_summary(conn, sid) {
+            let summary_text = format!("Previous session summary:\n{}", summary);
+            if char_estimate + (summary_text.len() as i64) < MAX_CHARS_CLOUD {
+                char_estimate += summary_text.len() as i64;
+                soft_memory.push(ContextItem {
+                    id: "session_summary".into(),
+                    kind: "session_summary".into(),
+                    priority: 7,
+                    text: summary_text,
+                    page_number: None,
+                    toc_node_id: None,
+                    is_hard_evidence: false,
+                });
+            }
+        }
     }
 
     ContextPack {

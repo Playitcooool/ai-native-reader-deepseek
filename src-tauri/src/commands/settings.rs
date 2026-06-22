@@ -113,6 +113,7 @@ pub fn set_default_provider(db: State<DbState>, provider_id: String) -> Result<(
 
 #[tauri::command]
 pub async fn test_provider(
+    http_client: State<'_, reqwest::Client>,
     db: State<'_, DbState>,
     provider_id: String,
 ) -> Result<TestProviderResult, String> {
@@ -138,7 +139,7 @@ pub async fn test_provider(
     let base_url = base_url.ok_or("Missing base_url")?;
     let api_key = api_key.ok_or("Missing api_key")?;
 
-    let result = crate::ai::provider::test_provider(&base_url, &api_key, &model).await;
+    let result = crate::ai::provider::test_provider(&http_client, &base_url, &api_key, &model).await;
     Ok(TestProviderResult {
         ok: result.ok,
         provider_id,
