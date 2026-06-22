@@ -8,6 +8,14 @@ import { useToast } from "./Toast";
 export default function AiSidebar() {
   const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
   const { messages, isGenerating, aiPhase, streamingContent, runWorkflow, cancelWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
+  const setSessionId = useAiStore((s) => s.setSessionId);
+  const setMessages = useAiStore((s) => s.setMessages);
+
+  // Reset AI session when switching documents to prevent context leak
+  useEffect(() => {
+    setSessionId(null);
+    setMessages([]);
+  }, [currentDocument?.id, setSessionId, setMessages]);
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
