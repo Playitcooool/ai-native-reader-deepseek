@@ -3,7 +3,8 @@ import LeftSidebar from "./components/LeftSidebar";
 import { ToastProvider, useToast } from "./components/Toast";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useDocumentStore } from "./stores/documentStore";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { useAiStore } from "./stores/aiStore";
 
 const CenterViewer = lazy(() => import("./components/CenterViewer"));
 const AiSidebar = lazy(() => import("./components/AiSidebar"));
@@ -24,10 +25,27 @@ function App() {
   const theme = useSettingsStore((s) => s.theme);
   const [leftOpen, setLeftOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiInputDraft, setAiInputDraft] = useState<string>();
+
+  const openAiPanel = useCallback((draft?: string) => {
+    setLeftOpen(false);
+    setAiOpen(true);
+    if (draft) setAiInputDraft(draft);
+  }, []);
+
+  const openLibraryPanel = useCallback(() => {
+    setAiOpen(false);
+    setLeftOpen(true);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    useAiStore.getState().setSessionId(null);
+    useAiStore.getState().setMessages([]);
+  }, [currentDocument?.id]);
 
   useEffect(() => {
     invoke<ProviderSettings[]>("get_provider_settings")
@@ -102,11 +120,11 @@ function App() {
         )}
         {currentDocument && (
           <div className="reader-chrome" aria-label="Reader controls">
-            <button onClick={() => setLeftOpen(true)} aria-label="Open library">
+            <button onClick={openLibraryPanel} aria-label="Open library">
               <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h11" /><path d="M6 17h13" /><path d="M6 21h13V7H6a2 2 0 0 0 0 4" /></svg>
               Library
             </button>
-            <button onClick={() => setAiOpen(true)} aria-label="Open AI assistant">
+            <button onClick={() => openAiPanel()} aria-label="Open AI assistant">
               <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a7 7 0 0 1 7 7c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 7-7Z" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
               Ask
             </button>
@@ -114,7 +132,7 @@ function App() {
         )}
         <div className="center-viewer">
           <Suspense fallback={<div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading…</div>}>
-            <CenterViewer onOpenAi={() => setAiOpen(true)} />
+            <CenterViewer onOpenAi={openAiPanel} />
           </Suspense>
         </div>
         {leftOpen && (
@@ -130,7 +148,7 @@ function App() {
             <aside className="ai-sheet" onMouseDown={(e) => e.stopPropagation()}>
               <button aria-label="Close AI" className="sheet-close" onClick={() => setAiOpen(false)}>×</button>
             <Suspense fallback={<div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading…</div>}>
-              <AiSidebar />
+              <AiSidebar draftInput={aiInputDraft} onDraftConsumed={() => setAiInputDraft(undefined)} />
             </Suspense>
             </aside>
           </div>

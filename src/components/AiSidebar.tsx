@@ -28,17 +28,14 @@ function primaryButton(bg = "var(--accent-color)"): CSSProperties {
   return { ...tinyButton, background: bg, color: "#fff", border: "none", fontWeight: 500 };
 }
 
-export default function AiSidebar() {
+interface AiSidebarProps {
+  draftInput?: string;
+  onDraftConsumed?: () => void;
+}
+
+export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProps) {
   const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
   const { messages, isGenerating, aiPhase, streamingContent, runWorkflow, cancelWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
-  const setSessionId = useAiStore((s) => s.setSessionId);
-  const setMessages = useAiStore((s) => s.setMessages);
-
-  // Reset AI session when switching documents to prevent context leak
-  useEffect(() => {
-    setSessionId(null);
-    setMessages([]);
-  }, [currentDocument?.id, setSessionId, setMessages]);
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
@@ -46,6 +43,12 @@ export default function AiSidebar() {
   const [savedNotes, setSavedNotes] = useState<Set<string>>(new Set());
   const [showRange, setShowRange] = useState(false);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    if (!draftInput) return;
+    setInput(draftInput);
+    onDraftConsumed?.();
+  }, [draftInput, onDraftConsumed]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -60,7 +63,10 @@ export default function AiSidebar() {
   const handleExplain = useCallback(async () => {
     if (!currentDocument) return;
     const sel = window.getSelection()?.toString().trim();
-    if (!sel) return;
+    if (!sel) {
+      addToast({ type: "info", message: "Select text in the PDF first." });
+      return;
+    }
     try {
       await runWorkflow({
         documentId: currentDocument.id,
@@ -248,7 +254,7 @@ export default function AiSidebar() {
           style={showRange ? primaryButton() : { ...ghostButton, background: "var(--bg-tertiary)", border: "none" }}>
           Range
         </button>
-        <button onClick={() => window.getSelection()?.toString().trim() ? handleExplain() : null}
+        <button onMouseDown={(e) => e.preventDefault()} onClick={handleExplain}
           disabled={isGenerating}
           style={primaryButton("var(--success-color)")}>
           Explain

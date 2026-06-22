@@ -2,7 +2,7 @@ import { useDocumentStore } from "../stores/documentStore";
 import PdfViewer from "./PdfViewer";
 import { useToast } from "./Toast";
 
-export default function CenterViewer({ onOpenAi }: { onOpenAi?: () => void }) {
+export default function CenterViewer({ onOpenAi }: { onOpenAi?: (draft?: string) => void }) {
   const { documents, currentDocument, handleOpenPdf, handleOpenFolder, setCurrentDocument } = useDocumentStore();
   const { addToast } = useToast();
 

@@ -16,7 +16,7 @@ import ShortcutsModal from "./ShortcutsModal";
 
 interface PdfViewerProps {
   documentId: string;
-  onOpenAi?: () => void;
+  onOpenAi?: (draft?: string) => void;
 }
 
 function Icon({ name }: { name: "books" | "ask" | "prev" | "next" | "search" | "moon" | "sun" | "minus" | "plus" | "close" }) {
@@ -270,6 +270,8 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
   // Handle Explain action
   const handleExplain = useCallback(async () => {
     if (!currentDocument || !selectionText) return;
+    const text = selectionText;
+    onOpenAi?.();
     clearSelection();
     try {
       await runWorkflow({
@@ -277,12 +279,12 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
         documentTitle: currentDocument.title ?? undefined,
         mode: "selection_explain",
         pageNumber: currentPage,
-        selectedText: selectionText,
+        selectedText: text,
       });
     } catch {
       addToast({ type: "error", message: "AI explanation failed." });
     }
-  }, [currentDocument, selectionText, currentPage, runWorkflow, clearSelection, addToast]);
+  }, [currentDocument, selectionText, currentPage, onOpenAi, clearSelection, runWorkflow, addToast]);
 
   // Scroll to page (used by keyboard nav)
   const goToPage = useCallback(
@@ -426,7 +428,7 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
         <button className="icon-button" onClick={() => { handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." })); clearSelection(); }} title="Open PDF (Cmd+O)" aria-label="Open PDF">
           <Icon name="books" />
         </button>
-        <button className="icon-button" onClick={onOpenAi} title="Ask AI about this document" aria-label="Ask AI">
+        <button className="icon-button" onClick={() => onOpenAi?.()} title="Ask AI about this document" aria-label="Ask AI">
           <Icon name="ask" />
         </button>
         <span className="toolbar-divider" />
@@ -548,9 +550,7 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
           position={selectionPos}
           onClose={clearSelection}
           onAsk={(text) => {
-            onOpenAi?.();
-            navigator.clipboard.writeText(text).catch(() => {});
-            addToast({ type: "info", message: "Text copied — paste it in the AI chat to ask about it." });
+            onOpenAi?.(`About this selection:\n\n${text}`);
           }}
           onExplain={handleExplain}
         />
