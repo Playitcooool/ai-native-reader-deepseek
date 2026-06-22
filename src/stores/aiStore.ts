@@ -34,9 +34,12 @@ interface AiState {
     endPage?: number;
     question?: string;
   }) => Promise<string | null>;
+  cancelWorkflow: () => void;
   retryLastWorkflow: () => Promise<string | null>;
   loadSessionMessages: (sessionId: string) => Promise<void>;
 }
+
+let cancelFlag = false;
 
 export const useAiStore = create<AiState>((set, get) => ({
   messages: [],
@@ -54,6 +57,7 @@ export const useAiStore = create<AiState>((set, get) => ({
     set({ isGenerating: true, streamingContent: "", lastWorkflowInput: input as Record<string, any> });
 
     let unlisten: UnlistenFn | null = null;
+    cancelFlag = false;
 
     try {
       // Listen for streaming tokens from backend
@@ -80,15 +84,21 @@ export const useAiStore = create<AiState>((set, get) => ({
         },
       });
 
+      if (cancelFlag) return null;
+
       set({ sessionId: result.session_id });
 
       // Add messages to local state
       const now = new Date().toISOString();
+      const userContent = input.selectedText ?? input.question ??
+        (input.mode === "page_summary" ? `Summarize page ${input.pageNumber}` :
+         input.mode === "range_summary" && input.startPage && input.endPage ? `Summarize pages ${input.startPage}–${input.endPage}` :
+         input.mode);
       const userMsg: AiMessage = {
         id: `user_${Date.now()}`,
         session_id: result.session_id,
         role: "user",
-        content: input.selectedText ?? input.question ?? input.mode,
+        content: userContent,
         page_number: input.pageNumber,
         context_snapshot_json: null,
         citations_json: null,
@@ -116,8 +126,14 @@ export const useAiStore = create<AiState>((set, get) => ({
       throw err;
     } finally {
       unlisten?.();
+      cancelFlag = false;
       set({ isGenerating: false, streamingContent: "" });
     }
+  },
+
+  cancelWorkflow: () => {
+    cancelFlag = true;
+    set({ isGenerating: false, streamingContent: "" });
   },
 
   retryLastWorkflow: async () => {

@@ -7,7 +7,7 @@ import { useToast } from "./Toast";
 
 export default function AiSidebar() {
   const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
-  const { messages, isGenerating, streamingContent, runWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
+  const { messages, isGenerating, streamingContent, runWorkflow, cancelWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
@@ -17,8 +17,12 @@ export default function AiSidebar() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
+    const el = listRef.current;
+    if (!el) return;
+    const threshold = 50;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    if (isNearBottom) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
 
@@ -270,8 +274,14 @@ export default function AiSidebar() {
             background: "var(--bg-primary)",
             border: "1px solid var(--border-color)", fontSize: 12, lineHeight: 1.5,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              AI
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                AI
+              </span>
+              <button onClick={cancelWorkflow} title="Cancel"
+                style={{ marginLeft: "auto", padding: "1px 5px", background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border-color)", borderRadius: 3, fontSize: 10, cursor: "pointer" }}>
+                ✕
+              </button>
             </div>
             <div className="markdown-content">
               <ReactMarkdown>{streamingContent}</ReactMarkdown>
@@ -280,7 +290,11 @@ export default function AiSidebar() {
         )}
         {isGenerating && !streamingContent && (
           <div style={{ padding: "8px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-            Thinking…
+            <span>Thinking…</span>
+            <button onClick={cancelWorkflow} title="Cancel"
+              style={{ marginLeft: 8, padding: "2px 6px", background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border-color)", borderRadius: 3, fontSize: 11, cursor: "pointer" }}>
+              ✕
+            </button>
           </div>
         )}
       </div>

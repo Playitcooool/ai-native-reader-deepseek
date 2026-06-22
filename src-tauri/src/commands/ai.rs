@@ -560,6 +560,12 @@ pub async fn run_ai_workflow(
         .map(|item| item.text.as_str())
         .collect::<Vec<_>>()
         .join("\n\n");
+
+    // Extract TOC breadcrumb and section info from context pack
+    let toc_breadcrumb = context_pack.hard_evidence.iter().find(|item| item.kind == "toc_breadcrumb");
+    let toc_path = toc_breadcrumb.map(|item| item.text.trim_start_matches("Section: ")).unwrap_or("");
+    let toc_node_id = toc_breadcrumb.and_then(|item| item.toc_node_id.as_deref());
+
     let memory_text = context_pack
         .soft_memory
         .iter()
@@ -567,22 +573,42 @@ pub async fn run_ai_workflow(
         .collect::<Vec<_>>()
         .join("\n\n");
 
+    // For chapter_qa, look up the section page range from the TOC node
+    let (section_start, section_end) = if input.mode == "chapter_qa" {
+        if let Some(node_id) = toc_node_id {
+            if let Ok(conn) = db.0.lock() {
+                let range = conn.query_row(
+                    "SELECT start_page, COALESCE(end_page, start_page) FROM toc_nodes WHERE id = ?1",
+                    rusqlite::params![node_id],
+                    |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+                ).unwrap_or((input.page_number, input.page_number));
+                range
+            } else {
+                (input.page_number, input.page_number)
+            }
+        } else {
+            (input.page_number, input.page_number)
+        }
+    } else {
+        (1, 1)
+    };
+
     let (system_prompt, user_prompt) = match input.mode.as_str() {
         "selection_explain" => {
             let sel = input.selected_text.as_deref().unwrap_or("");
-            crate::ai::prompts::explain_selection(title, input.page_number, "", sel, &evidence_text)
+            crate::ai::prompts::explain_selection(title, input.page_number, toc_path, sel, &evidence_text)
         }
         "page_summary" => {
-            crate::ai::prompts::summarize_page(title, input.page_number, "", &evidence_text)
+            crate::ai::prompts::summarize_page(title, input.page_number, toc_path, &evidence_text)
         }
         "range_summary" => {
             let sp = input.start_page.unwrap_or(input.page_number);
             let ep = input.end_page.unwrap_or(input.page_number);
-            crate::ai::prompts::summarize_range(title, sp, ep, "", &evidence_text)
+            crate::ai::prompts::summarize_range(title, sp, ep, toc_path, &evidence_text)
         }
         "chapter_qa" => {
             let q = input.question.as_deref().unwrap_or("");
-            crate::ai::prompts::ask_current_section(title, input.page_number, "", 1, 1, q, &evidence_text)
+            crate::ai::prompts::ask_current_section(title, input.page_number, toc_path, section_start, section_end, q, &evidence_text)
         }
         _ => return Err(format!("Unknown mode: {}", input.mode)),
     };
@@ -671,10 +697,17 @@ pub async fn run_ai_workflow(
         .map_err(|e| e.to_string())?;
 
         // Save user message
+        let user_content: String = input.selected_text.clone().or(input.question.clone()).unwrap_or_else(|| {
+            match input.mode.as_str() {
+                "page_summary" => format!("Summarize page {}", input.page_number),
+                "range_summary" => format!("Summarize pages {}–{}", input.start_page.unwrap_or(input.page_number), input.end_page.unwrap_or(input.page_number)),
+                _ => input.mode.clone(),
+            }
+        });
         conn.execute(
             "INSERT INTO ai_messages (id, session_id, role, content, page_number, context_snapshot_json, created_at)
              VALUES (?1, ?2, 'user', ?3, ?4, ?5, ?6)",
-            rusqlite::params![user_msg_id, session_id, input.selected_text.as_deref().or(input.question.as_deref()).unwrap_or(&input.mode),
+            rusqlite::params![user_msg_id, session_id, user_content,
                 input.page_number, context_json, now],
         )
         .map_err(|e| e.to_string())?;
