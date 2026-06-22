@@ -7,8 +7,11 @@
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
+    {
+      "identifier": "fs:allow-read",
+      "allow": [{ "path": "**" }]
+    },
     "fs:default",
-    "fs:allow-read",
     "fs:allow-write",
     "fs:allow-exists"
   ]
