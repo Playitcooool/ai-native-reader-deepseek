@@ -238,12 +238,8 @@ export default function AiSidebar() {
 
   return (
     <div className="sidebar-inner">
-      <div style={{
-        display: "flex", alignItems: "center", gap: 4,
-        padding: "6px 10px", borderBottom: line,
-        fontSize: 13, fontWeight: 600, flexShrink: 0,
-      }}>
-        <span style={{ marginRight: "auto" }}>AI</span>
+      <div className="ai-toolbar">
+        <span className="ai-title">AI</span>
         <button onClick={handleSummarizePage} disabled={isGenerating}
           style={primaryButton()}>
           Summarize
@@ -266,11 +262,7 @@ export default function AiSidebar() {
       </div>
 
       {showRange && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 3,
-          padding: "4px 10px", borderBottom: line,
-          fontSize: 12, flexShrink: 0,
-        }}>
+        <div className="ai-range">
           <span style={{ color: "var(--text-muted)", fontSize: 11 }}>From</span>
           <input type="number" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} placeholder="1" min={1} max={currentDocument?.page_count ?? 9999}
             style={{ width: 40, padding: "2px 4px", border: line, borderRadius: 3, fontSize: 11, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
@@ -284,7 +276,7 @@ export default function AiSidebar() {
         </div>
       )}
 
-      <div ref={listRef} role="log" aria-live="polite" aria-label="AI conversation" style={{ flex: 1, overflowY: "auto", padding: "8px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div ref={listRef} role="log" aria-live="polite" aria-label="AI conversation" className="ai-log">
         {messages.length === 0 && (
           <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
             <p>AI answers appear here.</p>
@@ -357,10 +349,7 @@ export default function AiSidebar() {
         )}
       </div>
 
-      <div style={{
-        display: "flex", gap: 4, padding: "6px 10px",
-        borderTop: line, flexShrink: 0,
-      }}>
+      <div className="ai-composer">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -384,9 +373,8 @@ export default function AiSidebar() {
             resize: "none", overflow: "hidden", lineHeight: 1.4, fontFamily: "inherit",
           }}
         />
-        <button onClick={handleAskQuestion} disabled={isGenerating || !input.trim()} title="Ask"
-          style={{ ...primaryButton(), padding: "5px 10px", borderRadius: 4, fontSize: 15, lineHeight: 1 }}>
-          ▶
+        <button className="ai-send" onClick={handleAskQuestion} disabled={isGenerating || !input.trim()} title="Ask" aria-label="Ask">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4.5 21 12 4 19.5v-6l9-1.5-9-1.5v-6Z" /></svg>
         </button>
       </div>
     </div>
