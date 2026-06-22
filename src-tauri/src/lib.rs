@@ -2,6 +2,7 @@ pub mod ai;
 pub mod commands;
 pub mod db;
 
+use commands::library::LibraryState;
 use commands::settings::DbState;
 use std::sync::Mutex;
 use tauri::Emitter;
@@ -33,6 +34,14 @@ pub fn run() {
                 db::migrations::initialize_database(&db_path).expect("failed to initialize database");
             app.manage(DbState(Mutex::new(conn)));
             app.manage(reqwest::Client::new());
+
+            app.manage(LibraryState {
+                watcher: std::sync::Mutex::new(None),
+                db_path: db_path.to_string_lossy().to_string(),
+            });
+
+            // Start watcher if a folder was previously configured
+            commands::library::init_watcher_if_configured(app.handle());
 
             // Build native menus
             let open = MenuItemBuilder::with_id("open_pdf", "Open PDF…")
@@ -98,6 +107,9 @@ pub fn run() {
             commands::ai::update_reading_state,
             commands::ai::get_citations_for_message,
             commands::ai::run_ai_workflow,
+            commands::library::set_library_folder,
+            commands::library::get_library_folder,
+            commands::library::clear_library_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
