@@ -5,8 +5,11 @@
 RustyBooks is a local-first desktop reader built with Tauri, React, and PDF.js. It keeps track of the page, section, selected text, nearby context, notes, and citations so AI answers are grounded in the document you are actually reading.
 
 <p>
-  <img alt="RustyBooks library on desktop" src="docs/screenshots/rustybooks-library-desktop.png" width="72%">
-  <img alt="RustyBooks library on mobile-sized viewport" src="docs/screenshots/rustybooks-library-mobile.png" width="22%">
+  <img alt="RustyBooks library with imported PDF covers" src="docs/screenshots/rustybooks-library.png" width="100%">
+</p>
+
+<p>
+  <img alt="RustyBooks PDF reader with toolbar" src="docs/screenshots/rustybooks-reader.png" width="100%">
 </p>
 
 ## Why RustyBooks
