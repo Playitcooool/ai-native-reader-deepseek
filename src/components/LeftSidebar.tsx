@@ -166,6 +166,7 @@ export default function LeftSidebar() {
     loadDocuments,
     loadLibraryFolder,
     setCurrentDocument,
+    setLibraryFolder,
     setCurrentPage,
   } = useDocumentStore();
   const { annotations, isLoading: notesLoading, loadAnnotations, deleteAnnotation } = useNotesStore();
@@ -185,6 +186,10 @@ export default function LeftSidebar() {
       );
     }
   }, [currentDocument, loadAnnotations, addToast]);
+
+  const nonFolderDocs = libraryFolder
+    ? documents.filter((d) => !d.file_path.startsWith(libraryFolder))
+    : [];
 
   const handleOpenDocument = (doc: typeof documents[0]) => {
     setCurrentDocument(doc);
@@ -260,9 +265,18 @@ export default function LeftSidebar() {
               {t.id === "recent" && (
                 <div>
                   {libraryFolder && (
-                    <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, padding: "0 4px" }}>
-                      📁 {libraryFolder.split("/").pop() ?? libraryFolder}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, padding: "0 4px" }}>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        📁 {libraryFolder.split("/").pop() ?? libraryFolder}
+                      </span>
+                      <button onClick={async () => {
+                        try {
+                          await invoke("clear_library_folder");
+                          setLibraryFolder(null);
+                          await loadDocuments();
+                        } catch {}
+                      }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1 }} title="Disconnect folder">✕</button>
+                    </div>
                   )}
                   {docsLoading ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "4px 0" }}>
@@ -275,11 +289,30 @@ export default function LeftSidebar() {
                 No PDFs opened yet. Click "Open PDF" to get started.
               </p>
             ) : libraryFolder ? (
-              <FileTreeView
-                nodes={buildFileTree(documents, libraryFolder)}
-                currentId={currentDocument?.id ?? null}
-                onSelect={handleOpenDocument}
-              />
+              <div>
+                <FileTreeView
+                  nodes={buildFileTree(documents, libraryFolder)}
+                  currentId={currentDocument?.id ?? null}
+                  onSelect={handleOpenDocument}
+                />
+                {nonFolderDocs.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, padding: "0 4px" }}>Other</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      {nonFolderDocs.map((doc) => (
+                        <button key={doc.id} onClick={() => handleOpenDocument(doc)} style={{
+                          display: "block", width: "100%", padding: "6px 10px", textAlign: "left",
+                          background: currentDocument?.id === doc.id ? "var(--accent-color)" : "var(--bg-secondary)",
+                          color: currentDocument?.id === doc.id ? "#fff" : "var(--text-primary)",
+                          border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 12, cursor: "pointer",
+                        }}>
+                          <div style={{ fontWeight: 500 }}>{doc.title ?? doc.original_filename}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {documents.map((doc) => (

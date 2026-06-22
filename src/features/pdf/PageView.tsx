@@ -216,7 +216,8 @@ export default function PageView({
       style={{
         position: "absolute",
         top,
-        left: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
         width,
         minHeight: height,
       }}
