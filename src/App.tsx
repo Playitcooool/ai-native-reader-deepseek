@@ -13,6 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { ProviderSettings } from "./stores/settingsStore";
 import type { Document } from "./stores/documentStore";
+import { isTauriRuntime } from "./tauriRuntime";
 
 function App() {
   const { addToast } = useToast();
@@ -72,6 +73,7 @@ function App() {
   }, [currentDocument?.id]);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     invoke<ProviderSettings[]>("get_provider_settings")
       .then((settings) => {
         if (settings && settings.length > 0) {
@@ -83,6 +85,7 @@ function App() {
 
   // Auto-restore last opened document on startup
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     let cancelled = false;
     (async () => {
       try {
@@ -110,6 +113,7 @@ function App() {
 
   // Listen for native menu File > Open PDF (Cmd+O)
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     const unlisten = listen("menu-open-pdf", () => {
       handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." }));
     });
@@ -120,6 +124,7 @@ function App() {
 
   // Listen for native menu File > Open Folder (Cmd+Shift+O)
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     const unlisten = listen("menu-open-folder", () => {
       handleOpenFolder().catch(() => addToast({ type: "error", message: "Failed to open folder." }));
     });
@@ -128,6 +133,7 @@ function App() {
 
   // Listen for library folder updates (new PDF auto-imported by watcher)
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     const unlisten = listen("library-folder-updated", () => {
       useDocumentStore.getState().loadDocuments();
     });

@@ -188,6 +188,12 @@
   width: 300px;
 }
 
+@media (max-width: 700px) {
+  .library-shell .sidebar-left {
+    display: none;
+  }
+}
+
 .library-actions button {
   display: inline-flex;
   align-items: center;

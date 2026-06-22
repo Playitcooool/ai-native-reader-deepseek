@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { TocNode } from "../features/toc/TocSidebar";
+import { isTauriRuntime } from "../tauriRuntime";
 
 export interface Document {
   id: string;
@@ -74,12 +75,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   scrollToPage: (page) => set({ currentPage: page }),
   setLibraryFolder: (folder) => set({ libraryFolder: folder }),
   loadLibraryFolder: async () => {
+    if (!isTauriRuntime()) return;
     try {
       const folder = await invoke<string | null>("get_library_folder");
       set({ libraryFolder: folder });
     } catch { /* ignore */ }
   },
   loadDocuments: async () => {
+    if (!isTauriRuntime()) return;
     set({ isLoading: true });
     try {
       const docs = await invoke<Document[]>("get_documents");
@@ -94,6 +97,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     set({ tocNodes: nodes });
   },
   handleOpenPdf: async () => {
+    if (!isTauriRuntime()) return;
     const selected = await open({
       multiple: false,
       filters: [{ name: "PDF", extensions: ["pdf"] }],
@@ -105,6 +109,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     get().setDocuments(docs);
   },
   handleOpenFolder: async () => {
+    if (!isTauriRuntime()) return;
     const selected = await open({ directory: true, multiple: false, recursive: true });
     if (!selected) return;
     await invoke("set_library_folder", { path: selected });
