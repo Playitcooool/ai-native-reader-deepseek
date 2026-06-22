@@ -1,6 +1,7 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { useDocumentStore } from "../stores/documentStore";
 import { type AiMessage, useAiStore } from "../stores/aiStore";
+import { useUndoStore } from "../stores/undoStore";
 import ReactMarkdown from "react-markdown";
 import { invoke } from "@tauri-apps/api/core";
 import { useToast } from "./Toast";
@@ -36,6 +37,7 @@ interface AiSidebarProps {
 export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProps) {
   const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
   const { messages, isGenerating, aiPhase, streamingContent, runWorkflow, cancelWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
+  const pushUndo = useUndoStore((s) => s.pushUndo);
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
@@ -136,7 +138,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
     async (msg: AiMessage) => {
       if (!currentDocument || savedNotes.has(msg.id)) return;
       try {
-        await invoke("create_annotation", {
+        const annotation = await invoke<{ id: string }>("create_annotation", {
           input: {
             document_id: currentDocument.id,
             page_number: msg.page_number ?? currentPage,
@@ -145,12 +147,17 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
             selected_text: null,
           },
         });
+        pushUndo({
+          label: "AI note",
+          undo: async () => { await invoke("delete_annotation", { annotationId: annotation.id }); },
+        });
+        window.dispatchEvent(new Event("annotations-changed"));
         setSavedNotes((prev) => new Set(prev).add(msg.id));
       } catch (err) {
         addToast({ type: "error", message: "Failed to save note." });
       }
     },
-    [currentDocument, currentPage, savedNotes, addToast],
+    [currentDocument, currentPage, savedNotes, pushUndo, addToast],
   );
 
   const handleContinue = useCallback(

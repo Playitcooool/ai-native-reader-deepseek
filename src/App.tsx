@@ -5,6 +5,7 @@ import { useSettingsStore } from "./stores/settingsStore";
 import { useDocumentStore } from "./stores/documentStore";
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useAiStore } from "./stores/aiStore";
+import { useUndoStore } from "./stores/undoStore";
 
 const CenterViewer = lazy(() => import("./components/CenterViewer"));
 const AiSidebar = lazy(() => import("./components/AiSidebar"));
@@ -18,6 +19,7 @@ function App() {
   const setSettings = useSettingsStore((s) => s.setSettings);
   const handleOpenPdf = useDocumentStore((s) => s.handleOpenPdf);
   const handleOpenFolder = useDocumentStore((s) => s.handleOpenFolder);
+  const undoLast = useUndoStore((s) => s.undoLast);
   const setCurrentDocument = useDocumentStore((s) => s.setCurrentDocument);
   const setDocuments = useDocumentStore((s) => s.setDocuments);
   const setLibraryFolder = useDocumentStore((s) => s.setLibraryFolder);
@@ -41,6 +43,22 @@ function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    const handleUndo = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.key.toLowerCase() !== "z") return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if ((e.target as HTMLElement | null)?.isContentEditable) return;
+      e.preventDefault();
+      undoLast()
+        .then((label) => {
+          if (label) window.dispatchEvent(new Event("annotations-changed"));
+        })
+        .catch(() => addToast({ type: "error", message: "Undo failed." }));
+    };
+    window.addEventListener("keydown", handleUndo);
+    return () => window.removeEventListener("keydown", handleUndo);
+  }, [undoLast, addToast]);
 
   useEffect(() => {
     useAiStore.getState().setSessionId(null);

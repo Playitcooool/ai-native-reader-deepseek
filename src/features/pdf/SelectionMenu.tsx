@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useToast } from "../../components/Toast";
+import { useUndoStore } from "../../stores/undoStore";
 
 interface SelectionMenuProps {
   selectedText: string;
@@ -10,7 +11,6 @@ interface SelectionMenuProps {
   position: { x: number; y: number } | null;
   onClose: () => void;
   onExplain: () => void;
-  onHighlightSaved?: () => void;
   onAsk?: (text: string) => void;
 }
 
@@ -24,13 +24,13 @@ export default function SelectionMenu({
   position,
   onClose,
   onExplain,
-  onHighlightSaved,
   onAsk,
 }: SelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [saved, setSaved] = useState(false);
   const [noteText, setNoteText] = useState("");
   const { addToast } = useToast();
+  const pushUndo = useUndoStore((s) => s.pushUndo);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -59,7 +59,7 @@ export default function SelectionMenu({
 
   const handleSaveHighlight = async (color: string) => {
     try {
-      await invoke("create_annotation", {
+      const annotation = await invoke<{ id: string }>("create_annotation", {
         input: {
           document_id: documentId,
           page_number: pageNumber,
@@ -70,7 +70,11 @@ export default function SelectionMenu({
           anchor: anchor ? JSON.stringify(anchor) : null,
         },
       });
-      onHighlightSaved?.();
+      pushUndo({
+        label: "highlight",
+        undo: async () => { await invoke("delete_annotation", { annotationId: annotation.id }); },
+      });
+      window.dispatchEvent(new Event("annotations-changed"));
       showSaved();
     } catch (err) {
       addToast({ type: "error", message: "Failed to save highlight." });
@@ -80,7 +84,7 @@ export default function SelectionMenu({
   const handleSaveNote = async () => {
     if (!noteText.trim()) return;
     try {
-      await invoke("create_annotation", {
+      const annotation = await invoke<{ id: string }>("create_annotation", {
         input: {
           document_id: documentId,
           page_number: pageNumber,
@@ -90,6 +94,11 @@ export default function SelectionMenu({
           anchor: anchor ? JSON.stringify(anchor) : null,
         },
       });
+      pushUndo({
+        label: "note",
+        undo: async () => { await invoke("delete_annotation", { annotationId: annotation.id }); },
+      });
+      window.dispatchEvent(new Event("annotations-changed"));
       showSaved();
       setNoteText("");
     } catch (err) {

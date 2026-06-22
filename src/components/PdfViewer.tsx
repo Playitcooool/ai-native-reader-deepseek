@@ -86,6 +86,12 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
   const searchCancelledRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const refresh = () => setHighlightRefreshKey((key) => key + 1);
+    window.addEventListener("annotations-changed", refresh);
+    return () => window.removeEventListener("annotations-changed", refresh);
+  }, []);
+
   // Compute page heights from base viewport and zoom
   const pageHeightAtZoom = basePageHeight * zoom;
   const pageWidthAtZoom = basePageWidth * zoom;
@@ -555,7 +561,6 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
           onAsk={(text) => {
             onOpenAi?.(`About this selection:\n\n${text}`);
           }}
-          onHighlightSaved={() => setHighlightRefreshKey((key) => key + 1)}
           onExplain={handleExplain}
         />
       )}

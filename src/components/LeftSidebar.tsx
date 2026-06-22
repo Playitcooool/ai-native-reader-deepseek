@@ -196,6 +196,17 @@ export default function LeftSidebar() {
     }
   }, [currentDocument, loadAnnotations, addToast]);
 
+  useEffect(() => {
+    if (!currentDocument) return;
+    const refresh = () => {
+      loadAnnotations(currentDocument.id).catch(() =>
+        addToast({ type: "error", message: "Failed to load annotations." })
+      );
+    };
+    window.addEventListener("annotations-changed", refresh);
+    return () => window.removeEventListener("annotations-changed", refresh);
+  }, [currentDocument, loadAnnotations, addToast]);
+
   const nonFolderDocs = libraryFolder
     ? documents.filter((d) => !d.file_path.startsWith(libraryFolder))
     : [];
