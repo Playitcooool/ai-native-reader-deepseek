@@ -285,7 +285,15 @@ export default memo(function PageView({
       {pageProxyRef.current && phase === "ready" && (
         <div
           data-text-layer
-          style={{ opacity: 0, transition: "opacity 0.15s ease" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            opacity: 0,
+            transition: "opacity 0.15s ease",
+          }}
           ref={(el) => {
             if (el) requestAnimationFrame(() => { el.style.opacity = "1"; });
           }}
