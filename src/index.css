@@ -25,6 +25,11 @@
   box-sizing: border-box;
 }
 
+/* Visible selection highlight for transparent PDF text layer */
+::selection {
+  background: rgba(37, 99, 235, 0.3);
+}
+
 html,
 body,
 #root {

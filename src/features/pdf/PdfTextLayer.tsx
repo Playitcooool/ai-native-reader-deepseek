@@ -58,23 +58,23 @@ export default memo(function PdfTextLayer({ page, scale, onSelection, containerW
     if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
 
     const text = sel.toString().trim();
-    if (!text) return;
+    if (!text || sel.rangeCount === 0) return;
 
-    // Use a range-based approach that's more robust than setTimeout
-    try {
-      if (sel.rangeCount === 0) return;
-      const range = sel.getRangeAt(0);
-      const prefix = getContextText(range, 'before');
-      const suffix = getContextText(range, 'after');
-      onSelection(text, {
-        pageNumber: page.pageNumber,
-        selectedText: text,
-        prefix: prefix || undefined,
-        suffix: suffix || undefined,
-      });
-    } catch {
-      // Selection may have changed between check and access
-    }
+    const range = sel.getRangeAt(0);
+    const prefix = getContextText(range, 'before');
+    const suffix = getContextText(range, 'after');
+    const anchor = {
+      pageNumber: page.pageNumber,
+      selectedText: text,
+      prefix: prefix || undefined,
+      suffix: suffix || undefined,
+    };
+
+    // Defer state update so browser finishes native selection processing
+    // before React re-renders and the SelectionMenu mounts/focuses.
+    requestAnimationFrame(() => {
+      onSelection(text, anchor);
+    });
   };
 
   return (
