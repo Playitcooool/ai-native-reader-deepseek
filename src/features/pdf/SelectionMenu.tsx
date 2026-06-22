@@ -10,8 +10,11 @@ interface SelectionMenuProps {
   position: { x: number; y: number } | null;
   onClose: () => void;
   onExplain: () => void;
+  onHighlightSaved?: () => void;
   onAsk?: (text: string) => void;
 }
+
+const highlightColors = ["#fde047", "#86efac", "#93c5fd", "#f0abfc"];
 
 export default function SelectionMenu({
   selectedText,
@@ -21,6 +24,7 @@ export default function SelectionMenu({
   position,
   onClose,
   onExplain,
+  onHighlightSaved,
   onAsk,
 }: SelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -53,7 +57,7 @@ export default function SelectionMenu({
     toastSaved.current = setTimeout(() => onClose(), 1500);
   };
 
-  const handleSaveHighlight = async () => {
+  const handleSaveHighlight = async (color: string) => {
     try {
       await invoke("create_annotation", {
         input: {
@@ -61,9 +65,12 @@ export default function SelectionMenu({
           page_number: pageNumber,
           type: "highlight",
           selected_text: selectedText,
+          note_text: null,
+          color,
           anchor: anchor ? JSON.stringify(anchor) : null,
         },
       });
+      onHighlightSaved?.();
       showSaved();
     } catch (err) {
       addToast({ type: "error", message: "Failed to save highlight." });
@@ -185,21 +192,26 @@ export default function SelectionMenu({
       >
         Ask
       </button>
-      <button
-        role="menuitem"
-        onMouseDown={keepPdfSelection}
-        onClick={handleSaveHighlight}
-        style={{
-          padding: "4px 10px",
-          background: "transparent",
-          color: "var(--text-primary)",
-          border: "1px solid var(--border-color)",
-          borderRadius: 4,
-          fontSize: 12,
-        }}
-      >
-        Highlight
-      </button>
+      <div role="group" aria-label="Highlight color" style={{ display: "flex", gap: 3 }}>
+        {highlightColors.map((color) => (
+          <button
+            key={color}
+            role="menuitem"
+            aria-label={`Highlight ${color}`}
+            title="Highlight"
+            onMouseDown={keepPdfSelection}
+            onClick={() => handleSaveHighlight(color)}
+            style={{
+              width: 22,
+              height: 22,
+              background: color,
+              border: "1px solid var(--border-color)",
+              borderRadius: 4,
+              cursor: "pointer",
+            }}
+          />
+        ))}
+      </div>
       <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
         <input
           value={noteText}

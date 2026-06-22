@@ -136,7 +136,7 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
 function annotationsToMarkdown(annotations: Annotation[], docTitle: string | null): string {
   let md = `# Notes${docTitle ? ` — ${docTitle}` : ""}\n\n`;
   const byPage = new Map<number, typeof annotations>();
-  for (const a of annotations) {
+  for (const a of annotations.filter((ann) => ann.type !== "highlight")) {
     const list = byPage.get(a.page_number) ?? [];
     list.push(a);
     byPage.set(a.page_number, list);
@@ -179,6 +179,7 @@ export default function LeftSidebar() {
   } = useDocumentStore();
   const { annotations, isLoading: notesLoading, loadAnnotations, deleteAnnotation } = useNotesStore();
   const { addToast } = useToast();
+  const notes = annotations.filter((ann) => ann.type !== "highlight");
 
   useEffect(() => {
     loadDocuments().catch(() =>
@@ -214,10 +215,10 @@ export default function LeftSidebar() {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExportNotes = async () => {
-    if (annotations.length === 0 || isExporting) return;
+    if (notes.length === 0 || isExporting) return;
     setIsExporting(true);
     try {
-      const md = annotationsToMarkdown(annotations, currentDocument?.title ?? null);
+      const md = annotationsToMarkdown(notes, currentDocument?.title ?? null);
       const filePath = await save({
         defaultPath: `${currentDocument?.title ?? "notes"}.md`,
         filters: [{ name: "Markdown", extensions: ["md"] }],
@@ -360,7 +361,7 @@ export default function LeftSidebar() {
                     <SkeletonBlock lines={[50, 30, 80]} />
                     <SkeletonBlock lines={[45, 25, 70]} />
                   </div>
-                ) : annotations.length === 0 ? (
+                ) : notes.length === 0 ? (
                   <>
                     <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
                       No notes yet.
@@ -379,7 +380,7 @@ export default function LeftSidebar() {
                       }}>
                       {isExporting ? "Exporting..." : "Export Notes"}
                     </button>
-                    {annotations.map((ann) => (
+                    {notes.map((ann) => (
                       <div key={ann.id} style={{
                         padding: "8px 10px", background: "var(--bg-secondary)",
                         border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13,

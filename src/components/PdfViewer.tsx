@@ -42,6 +42,7 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
   const [selectionText, setSelectionText] = useState("");
   const [selectionPos, setSelectionPos] = useState<{ x: number; y: number } | null>(null);
   const [selectionAnchor, setSelectionAnchor] = useState<any>(null);
+  const [highlightRefreshKey, setHighlightRefreshKey] = useState(0);
   const [pageCount, setPageCount] = useState(0);
   const [basePageHeight, setBasePageHeight] = useState(0);
   const [basePageWidth, setBasePageWidth] = useState(0);
@@ -527,11 +528,13 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
                 <PageView
                   key={pageNum}
                   pageNum={pageNum}
+                  documentId={documentId}
                   pdf={pdfRef.current!}
                   zoom={zoom}
                   top={pageTops[idx] ?? 0}
                   width={pageWidthAtZoom}
                   height={pageHeightAtZoom}
+                  highlightRefreshKey={highlightRefreshKey}
                   onSelection={handleTextSelection}
                 />
               );
@@ -552,6 +555,7 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
           onAsk={(text) => {
             onOpenAi?.(`About this selection:\n\n${text}`);
           }}
+          onHighlightSaved={() => setHighlightRefreshKey((key) => key + 1)}
           onExplain={handleExplain}
         />
       )}

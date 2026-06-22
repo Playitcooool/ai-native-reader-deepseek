@@ -1,8 +1,8 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { PDFPageProxy } from "pdfjs-dist";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 
-interface TextSpan {
+export interface TextSpan {
   text: string;
   x: number;
   y: number;
@@ -11,17 +11,25 @@ interface TextSpan {
   fontSize: number;
 }
 
+export interface TextHighlight {
+  selected_text: string | null;
+  color: string | null;
+  anchor_json?: string | null;
+}
+
 interface PdfTextLayerProps {
   page: PDFPageProxy;
   scale: number;
   onSelection: (text: string, anchor: { pageNumber: number; selectedText: string; prefix?: string; suffix?: string }) => void;
   containerWidth?: number;
   containerHeight?: number;
+  highlights?: TextHighlight[];
 }
 
-export default memo(function PdfTextLayer({ page, scale, onSelection, containerWidth, containerHeight }: PdfTextLayerProps) {
+export default memo(function PdfTextLayer({ page, scale, onSelection, containerWidth, containerHeight, highlights = [] }: PdfTextLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null);
   const [spans, setSpans] = useState<TextSpan[]>([]);
+  const spanHighlightColors = useMemo(() => getHighlightColors(spans, highlights), [spans, highlights]);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +110,7 @@ export default memo(function PdfTextLayer({ page, scale, onSelection, containerW
             fontSize: s.fontSize,
             whiteSpace: "pre",
             lineHeight: 1,
+            background: spanHighlightColors[i],
           }}
         >
           {s.text}
@@ -129,5 +138,57 @@ function getContextText(range: Range, dir: 'before' | 'after'): string {
     }
   } catch {
     return "";
+  }
+}
+
+export function getHighlightColors(spans: TextSpan[], highlights: TextHighlight[]): Array<string | undefined> {
+  const ranges = spanRanges(spans);
+  const colors = spans.map(() => undefined as string | undefined);
+  for (const h of highlights) {
+    const needle = compact(h.selected_text ?? "");
+    if (!needle) continue;
+    const start = findHighlightStart(ranges.fullText, needle, h.anchor_json);
+    if (start === null) continue;
+    const end = start + needle.length;
+    ranges.forEach((range, index) => {
+      if (range.start < end && start < range.end) colors[index] = h.color ?? "#fde047";
+    });
+  }
+  return colors;
+}
+
+function spanRanges(spans: TextSpan[]): Array<{ start: number; end: number }> & { fullText: string } {
+  let fullText = "";
+  const ranges = spans.map((span) => {
+    const start = fullText.length;
+    fullText += compact(span.text);
+    return { start, end: fullText.length };
+  }) as Array<{ start: number; end: number }> & { fullText: string };
+  ranges.fullText = fullText;
+  return ranges;
+}
+
+function compact(text: string): string {
+  return text.replace(/\s+/g, "");
+}
+
+function findHighlightStart(fullText: string, selectedText: string, anchorJson?: string | null): number | null {
+  const anchor = parseAnchor(anchorJson);
+  const prefix = compact(anchor?.prefix ?? "");
+  const suffix = compact(anchor?.suffix ?? "");
+  if (prefix || suffix) {
+    const contextStart = fullText.indexOf(`${prefix}${selectedText}${suffix}`);
+    if (contextStart >= 0) return contextStart + prefix.length;
+  }
+  const start = fullText.indexOf(selectedText);
+  return start >= 0 ? start : null;
+}
+
+function parseAnchor(anchorJson?: string | null): { prefix?: string; suffix?: string } | null {
+  if (!anchorJson) return null;
+  try {
+    return JSON.parse(anchorJson);
+  } catch {
+    return null;
   }
 }

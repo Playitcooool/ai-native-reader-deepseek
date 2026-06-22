@@ -1,14 +1,18 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
+import { invoke } from "@tauri-apps/api/core";
+import type { Annotation } from "../../stores/notesStore";
 import PdfTextLayer from "./PdfTextLayer";
 
 interface PageViewProps {
   pageNum: number;
+  documentId: string;
   pdf: PDFDocumentProxy;
   zoom: number;
   top: number;
   width: number;
   height: number;
+  highlightRefreshKey?: number;
   onSelection: (text: string, anchor: {
     pageNumber: number;
     selectedText: string;
@@ -28,11 +32,13 @@ type Phase = "loading" | "ready" | "error";
  */
 export default memo(function PageView({
   pageNum,
+  documentId,
   pdf,
   zoom,
   top,
   width,
   height,
+  highlightRefreshKey = 0,
   onSelection,
 }: PageViewProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -45,6 +51,7 @@ export default memo(function PageView({
   const prevZoomRef = useRef(zoom);
   const [phase, setPhase] = useState<Phase>("loading");
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [highlights, setHighlights] = useState<Annotation[]>([]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -120,6 +127,18 @@ export default memo(function PageView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageNum, pdf]);
+
+  useEffect(() => {
+    let dead = false;
+    invoke<Annotation[]>("get_annotations_for_page", { documentId, pageNumber: pageNum })
+      .then((rows) => {
+        if (!dead) setHighlights(rows.filter((a) => a.type === "highlight"));
+      })
+      .catch(() => {
+        if (!dead) setHighlights([]);
+      });
+    return () => { dead = true; };
+  }, [documentId, pageNum, highlightRefreshKey]);
 
   // Zoom transition: CSS scale → re-render into back canvas → cross-fade
   useEffect(() => {
@@ -304,6 +323,7 @@ export default memo(function PageView({
             onSelection={handleSelection}
             containerWidth={width}
             containerHeight={height}
+            highlights={highlights}
           />
         </div>
       )}
