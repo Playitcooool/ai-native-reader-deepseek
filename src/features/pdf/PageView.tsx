@@ -265,6 +265,7 @@ export default memo(function PageView({
           boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
           background: "var(--bg-primary)",
           width: "100%",
+          pointerEvents: "none",
         }}
       />
 
