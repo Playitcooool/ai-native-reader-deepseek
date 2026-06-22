@@ -40,6 +40,16 @@ interface AiState {
 }
 
 let cancelFlag = false;
+let streamBuffer = "";
+let streamTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushStreamBuffer(set: any) {
+  if (streamBuffer) {
+    set((s: AiState) => ({ streamingContent: s.streamingContent + streamBuffer }));
+    streamBuffer = "";
+  }
+  streamTimer = null;
+}
 
 export const useAiStore = create<AiState>((set, get) => ({
   messages: [],
@@ -60,9 +70,12 @@ export const useAiStore = create<AiState>((set, get) => ({
     cancelFlag = false;
 
     try {
-      // Listen for streaming tokens from backend
+      // Listen for streaming tokens from backend (debounced)
       unlisten = await listen<{ token: string }>("ai-stream-chunk", (event) => {
-        set((s) => ({ streamingContent: s.streamingContent + event.payload.token }));
+        streamBuffer += event.payload.token;
+        if (!streamTimer) {
+          streamTimer = setTimeout(() => flushStreamBuffer(set), 50);
+        }
       });
 
       const result = await invoke<{
@@ -84,6 +97,8 @@ export const useAiStore = create<AiState>((set, get) => ({
         },
       });
 
+      if (streamTimer) { clearTimeout(streamTimer); streamTimer = null; }
+      flushStreamBuffer(set);
       if (cancelFlag) return null;
 
       set({ sessionId: result.session_id });
@@ -126,6 +141,8 @@ export const useAiStore = create<AiState>((set, get) => ({
       throw err;
     } finally {
       unlisten?.();
+      if (streamTimer) { clearTimeout(streamTimer); streamTimer = null; }
+      streamBuffer = "";
       cancelFlag = false;
       set({ isGenerating: false, streamingContent: "" });
     }

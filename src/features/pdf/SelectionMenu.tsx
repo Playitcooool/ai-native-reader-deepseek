@@ -10,6 +10,7 @@ interface SelectionMenuProps {
   position: { x: number; y: number } | null;
   onClose: () => void;
   onExplain: () => void;
+  onAsk?: (text: string) => void;
 }
 
 export default function SelectionMenu({
@@ -20,6 +21,7 @@ export default function SelectionMenu({
   position,
   onClose,
   onExplain,
+  onAsk,
 }: SelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const firstBtnRef = useRef<HTMLButtonElement>(null);
@@ -164,6 +166,21 @@ export default function SelectionMenu({
         }}
       >
         Explain
+      </button>
+      <button
+        role="menuitem"
+        onClick={() => { onAsk?.(selectedText); onClose(); }}
+        title="Ask about this selection"
+        style={{
+          padding: "4px 10px",
+          background: "transparent",
+          color: "var(--text-primary)",
+          border: "1px solid var(--border-color)",
+          borderRadius: 4,
+          fontSize: 12,
+        }}
+      >
+        Ask
       </button>
       <button
         role="menuitem"

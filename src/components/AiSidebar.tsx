@@ -59,14 +59,19 @@ export default function AiSidebar() {
 
   const handleSummarizeRange = useCallback(async () => {
     if (!currentDocument || !rangeStart || !rangeEnd) return;
+    let sp = Math.max(1, Math.min(parseInt(rangeStart) || 1, currentDocument.page_count ?? 9999));
+    let ep = Math.max(1, Math.min(parseInt(rangeEnd) || 1, currentDocument.page_count ?? 9999));
+    if (sp > ep) [sp, ep] = [ep, sp];
+    setRangeStart(String(sp));
+    setRangeEnd(String(ep));
     try {
       await runWorkflow({
         documentId: currentDocument.id,
         documentTitle: currentDocument.title ?? undefined,
         mode: "range_summary",
         pageNumber: currentPage,
-        startPage: parseInt(rangeStart),
-        endPage: parseInt(rangeEnd),
+        startPage: sp,
+        endPage: ep,
       });
     } catch (err) {
       addToast({ type: "error", message: `AI range summarization failed: ${err}` });
@@ -214,10 +219,10 @@ export default function AiSidebar() {
           fontSize: 12, flexShrink: 0,
         }}>
           <span style={{ color: "var(--text-muted)", fontSize: 11 }}>From</span>
-          <input type="number" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} placeholder="1"
+          <input type="number" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} placeholder="1" min={1} max={currentDocument?.page_count ?? 9999}
             style={{ width: 40, padding: "2px 4px", border: "1px solid var(--border-color)", borderRadius: 3, fontSize: 11, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
           <span style={{ color: "var(--text-muted)", fontSize: 11 }}>to</span>
-          <input type="number" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} placeholder="1"
+          <input type="number" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} placeholder="1" min={1} max={currentDocument?.page_count ?? 9999}
             style={{ width: 40, padding: "2px 4px", border: "1px solid var(--border-color)", borderRadius: 3, fontSize: 11, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
           <button onClick={handleSummarizeRange} disabled={isGenerating || !rangeStart || !rangeEnd}
             style={{ padding: "2px 6px", fontSize: 11, background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 3, cursor: "pointer" }}>
@@ -252,6 +257,11 @@ export default function AiSidebar() {
             )}
             {msg.role === "assistant" && (
               <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
+                <button onClick={() => navigator.clipboard.writeText(msg.content)}
+                  title="Copy"
+                  style={{ padding: "2px 6px", fontSize: 12, lineHeight: 1, background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border-color)", borderRadius: 3, cursor: "pointer" }}>
+                  📋
+                </button>
                 <button onClick={() => handleSaveAsNote(msg)} disabled={savedNotes.has(msg.id)}
                   style={{ padding: "2px 6px", fontSize: 10, background: "transparent", color: savedNotes.has(msg.id) ? "var(--text-muted)" : "var(--accent-color)", border: `1px solid ${savedNotes.has(msg.id) ? "var(--border-color)" : "var(--accent-color)"}`, borderRadius: 3, cursor: "pointer" }}>
                   {savedNotes.has(msg.id) ? "✓ Saved" : "Save"}

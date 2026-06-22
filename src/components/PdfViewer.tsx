@@ -527,6 +527,10 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
           anchor={selectionAnchor}
           position={selectionPos}
           onClose={clearSelection}
+          onAsk={(text) => {
+            navigator.clipboard.writeText(text).catch(() => {});
+            addToast({ type: "info", message: "Text copied — paste it in the AI chat to ask about it." });
+          }}
           onExplain={handleExplain}
         />
       )}
