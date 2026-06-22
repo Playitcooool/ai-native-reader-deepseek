@@ -5,8 +5,7 @@ import "../pdfjs";
 import { useDocumentStore } from "../stores/documentStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useAiStore } from "../stores/aiStore";
-import { readFile } from "@tauri-apps/plugin-fs";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { extractToc, type TocNodeInput } from "../features/toc/tocTree";
 import { PageExtractionQueue } from "../features/pdf/pdfTextExtraction";
 import SelectionMenu from "../features/pdf/SelectionMenu";
@@ -135,7 +134,10 @@ export default function PdfViewer({ filePath, documentId }: PdfViewerProps) {
     const loadPdf = async () => {
       try {
         setLoadProgress(0);
-        const bytes = await readFile(filePath);
+        // Use asset protocol to bypass webview fs sandbox restrictions
+        const assetUrl = convertFileSrc(filePath);
+        const response = await fetch(assetUrl);
+        const bytes = new Uint8Array(await response.arrayBuffer());
         const loadingTask = pdfjsLib.getDocument({ data: bytes } as any);
         // pdfjs supports onProgress callback via its internal event system
         loadingTask.onProgress = (loaded: number, total: number) => {
