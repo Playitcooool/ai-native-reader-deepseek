@@ -1,7 +1,7 @@
 {
-  "productName": "AI-Native PDF Reader",
+  "productName": "RustyBooks",
   "version": "0.1.0",
-  "identifier": "com.ai-native-reader.app",
+  "identifier": "com.rustybooks.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "AI-Native PDF Reader",
+        "title": "RustyBooks",
         "width": 1280,
         "height": 800,
         "resizable": true,

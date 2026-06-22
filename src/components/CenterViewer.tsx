@@ -25,7 +25,7 @@ export default function CenterViewer({ onOpenAi }: { onOpenAi?: (draft?: string)
     <div className="library-view">
       <div className="library-header">
         <div>
-          <p className="library-eyebrow">AI Reader</p>
+          <p className="library-eyebrow">RustyBooks</p>
           <h1>Library</h1>
           <p>{documents.length ? "Pick up where you left off." : "Add a PDF to begin."}</p>
         </div>
