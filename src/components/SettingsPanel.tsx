@@ -116,9 +116,9 @@ export default function SettingsPanel() {
         style={{ padding: "6px 8px", border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
 
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={handleSave} disabled={saving}
-          style={{ flex: 1, padding: "8px 16px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 4, fontSize: 13, fontWeight: 500 }}>
-          {saving ? "Saving..." : "Save"}
+        <button onClick={handleSave} disabled={saving} title="Save"
+          style={{ padding: "6px 12px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 4, fontSize: 15, lineHeight: 1, cursor: "pointer" }}>
+          {saving ? "⏳" : "💾"}
         </button>
       </div>
 
@@ -143,14 +143,14 @@ export default function SettingsPanel() {
             >
               <div style={{ fontWeight: 500 }}>{s.model}</div>
               <div style={{ fontSize: 11, opacity: 0.8 }}>{s.base_url ?? "N/A"}</div>
-              <button onClick={(e) => { e.stopPropagation(); handleTest(s.id); }} disabled={testing}
+              <button onClick={(e) => { e.stopPropagation(); handleTest(s.id); }} disabled={testing} title="Test connection"
                 style={{
-                  marginTop: 4, padding: "3px 8px", background: "transparent",
+                  marginTop: 4, padding: "2px 6px", background: "transparent",
                   color: editingId === s.id ? "#fff" : "var(--accent-color)",
                   border: `1px solid ${editingId === s.id ? "#fff" : "var(--accent-color)"}`,
-                  borderRadius: 3, fontSize: 11, cursor: "pointer",
+                  borderRadius: 3, fontSize: 13, lineHeight: 1, cursor: "pointer",
                 }}>
-                {testing ? "Testing..." : "Test Connection"}
+                {testing ? "⏳" : "▶"}
               </button>
             </div>
           ))}

@@ -300,9 +300,9 @@ export default function AiSidebar() {
             borderRadius: 4, fontSize: 12, background: "var(--bg-primary)", color: "var(--text-primary)",
           }}
         />
-        <button onClick={handleAskQuestion} disabled={isGenerating || !input.trim()}
-          style={{ padding: "5px 10px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-          Ask
+        <button onClick={handleAskQuestion} disabled={isGenerating || !input.trim()} title="Ask"
+          style={{ padding: "5px 10px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 4, fontSize: 15, lineHeight: 1, cursor: "pointer" }}>
+          ▶
         </button>
       </div>
     </div>
