@@ -290,14 +290,27 @@ export default function AiSidebar() {
         display: "flex", gap: 4, padding: "6px 10px",
         borderTop: "1px solid var(--border-color)", flexShrink: 0,
       }}>
-        <input
-          value={input} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAskQuestion(); } }}
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleAskQuestion();
+            }
+          }}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+          }}
           placeholder="Ask about this page…"
           disabled={isGenerating}
+          rows={1}
           style={{
             flex: 1, padding: "5px 8px", border: "1px solid var(--border-color)",
             borderRadius: 4, fontSize: 12, background: "var(--bg-primary)", color: "var(--text-primary)",
+            resize: "none", overflow: "hidden", lineHeight: 1.4, fontFamily: "inherit",
           }}
         />
         <button onClick={handleAskQuestion} disabled={isGenerating || !input.trim()} title="Ask"
