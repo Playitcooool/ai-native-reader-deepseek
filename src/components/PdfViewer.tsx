@@ -19,6 +19,23 @@ interface PdfViewerProps {
   onOpenAi?: () => void;
 }
 
+function Icon({ name }: { name: "books" | "ask" | "prev" | "next" | "search" | "moon" | "sun" | "minus" | "plus" | "close" }) {
+  const common = { width: 17, height: 17, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const paths = {
+    books: <><path d="M4 19.5V5a2 2 0 0 1 2-2h11" /><path d="M6 17h13" /><path d="M6 21h13V7H6a2 2 0 0 0 0 4" /></>,
+    ask: <><path d="M12 3a7 7 0 0 1 7 7c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 7-7Z" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
+    prev: <><path d="m15 18-6-6 6-6" /></>,
+    next: <><path d="m9 18 6-6-6-6" /></>,
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
+    moon: <><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8Z" /></>,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.9 4.9 1.4 1.4" /><path d="m17.7 17.7 1.4 1.4" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.3 17.7-1.4 1.4" /><path d="m19.1 4.9-1.4 1.4" /></>,
+    minus: <><path d="M5 12h14" /></>,
+    plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
+    close: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
+  };
+  return <svg aria-hidden="true" {...common}>{paths[name]}</svg>;
+}
+
 export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -403,67 +420,40 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
   }, [visibleRange]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, width: "100%" }}>
+    <div className="pdf-viewer">
       {/* Toolbar */}
-      <div
-        style={{
-          display: "flex", alignItems: "center", gap: 8, padding: "6px 12px",
-          background: "var(--bg-primary)", borderBottom: "1px solid var(--border-color)",
-          fontSize: 13, flexShrink: 0,
-        }}
-      >
-        <button onClick={() => { handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." })); clearSelection(); }} title="Open PDF (Cmd+O)" style={{ fontWeight: 600 }}>
-          📂 Open
+      <div className="reader-toolbar">
+        <button className="icon-button" onClick={() => { handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." })); clearSelection(); }} title="Open PDF (Cmd+O)" aria-label="Open PDF">
+          <Icon name="books" />
         </button>
-        <button onClick={onOpenAi} title="Ask AI about this document">Ask</button>
-        <span style={{ color: "var(--border-color)" }}>|</span>
-        <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page">◀ Prev</button>
-        <span>
-          Page{" "}
+        <button className="icon-button" onClick={onOpenAi} title="Ask AI about this document" aria-label="Ask AI">
+          <Icon name="ask" />
+        </button>
+        <span className="toolbar-divider" />
+        <button className="icon-button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page"><Icon name="prev" /></button>
+        <span className="page-control">
           <input
             type="number" value={currentPage} min={1} max={pageCount || 1}
             onChange={(e) => goToPage(Number(e.target.value))}
-            style={{ width: 50, textAlign: "center", padding: "2px 4px", border: "1px solid var(--border-color)", borderRadius: 3 }}
           />{" "}
-          / {pageCount || "?"}
+          <span>/ {pageCount || "?"}</span>
         </span>
-        <button onClick={() => goToPage(currentPage + 1)} disabled={!pdfRef.current || currentPage >= pageCount} aria-label="Next page">Next ▶</button>
-        <button onClick={handleToggleSearch} title="Search (Ctrl+F)" aria-label="Toggle search" style={{ opacity: showSearch ? 1 : 0.6 }}>
-          🔍
+        <button className="icon-button" onClick={() => goToPage(currentPage + 1)} disabled={!pdfRef.current || currentPage >= pageCount} aria-label="Next page"><Icon name="next" /></button>
+        <button className={`icon-button ${showSearch ? "active" : ""}`} onClick={handleToggleSearch} title="Search (Ctrl+F)" aria-label="Toggle search">
+          <Icon name="search" />
         </button>
-        <button onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Switch to light/dark mode (Cmd+Shift+T)" aria-label="Toggle theme" style={{ fontSize: 15 }}>
-          {theme === "light" ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/>
-              <line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          )}
+        <button className="icon-button" onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Switch to light/dark mode (Cmd+Shift+T)" aria-label="Toggle theme">
+          <Icon name={theme === "light" ? "moon" : "sun"} />
         </button>
-        <span style={{ flex: 1 }} />
-        <button onClick={() => handleSetZoom(zoom - 0.25)} disabled={zoom <= 0.25} aria-label="Zoom out">−</button>
-        <span>{Math.round(zoom * 100)}%</span>
-        <button onClick={() => handleSetZoom(zoom + 0.25)} disabled={zoom >= 4.0} aria-label="Zoom in">+</button>
-        <button onClick={() => handleSetZoom(1.0)}>Reset</button>
+        <span className="toolbar-spacer" />
+        <button className="icon-button" onClick={() => handleSetZoom(zoom - 0.25)} disabled={zoom <= 0.25} aria-label="Zoom out"><Icon name="minus" /></button>
+        <button className="zoom-reset" onClick={() => handleSetZoom(1.0)}>{Math.round(zoom * 100)}%</button>
+        <button className="icon-button" onClick={() => handleSetZoom(zoom + 0.25)} disabled={zoom >= 4.0} aria-label="Zoom in"><Icon name="plus" /></button>
       </div>
 
       {/* Search bar */}
       {showSearch && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-          padding: "4px 12px", borderBottom: "1px solid var(--border-color)",
-          background: "var(--bg-primary)", fontSize: 13,
-        }}>
+        <div className="search-bar">
           <input
             ref={searchInputRef}
             value={searchQuery}
@@ -471,16 +461,12 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
             onKeyDown={(e) => { if (e.key === "Enter") performSearch(searchQuery); }}
             placeholder="Search in document…"
             autoFocus
-            style={{
-              flex: 1, padding: "4px 8px", border: "1px solid var(--border-color)",
-              borderRadius: 3, fontSize: 13, background: "var(--bg-primary)", color: "var(--text-primary)",
-            }}
           />
           <button onClick={() => performSearch(searchQuery)} disabled={isSearching || !searchQuery.trim() || indexedPageCount === 0}
-            style={{ padding: "4px 10px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 3, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+            className="primary-action">
             {isSearching ? "Searching" : "Search"}
           </button>
-          <span style={{ color: "var(--text-muted)", fontSize: 12, whiteSpace: "nowrap" }}>
+          <span className="search-status">
             {indexedPageCount === 0
               ? "Waiting for index"
               : extractionDone < extractionTotal.current
@@ -489,33 +475,26 @@ export default function PdfViewer({ documentId, onOpenAi }: PdfViewerProps) {
           </span>
           {!isSearching && searchResults.length > 0 && (
             <>
-              <span style={{ color: "var(--text-secondary)", fontSize: 12, whiteSpace: "nowrap" }}>
+              <span className="search-count">
                 {currentResultIdx + 1} / {searchResults.length}
               </span>
               <button onClick={() => goToSearchResult(currentResultIdx - 1)} disabled={currentResultIdx <= 0} aria-label="Previous search result"
-                style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>◀</button>
+                className="icon-button"><Icon name="prev" /></button>
               <button onClick={() => goToSearchResult(currentResultIdx + 1)} disabled={currentResultIdx >= searchResults.length - 1} aria-label="Next search result"
-                style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>▶</button>
+                className="icon-button"><Icon name="next" /></button>
             </>
           )}
           {!isSearching && searchQuery && searchResults.length === 0 && (
-            <span style={{ color: "var(--text-muted)", fontSize: 12 }}>No results</span>
+            <span className="search-status">No results</span>
           )}
-          <button onClick={handleToggleSearch} aria-label="Close search" style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>✕</button>
+          <button onClick={handleToggleSearch} aria-label="Close search" className="icon-button"><Icon name="close" /></button>
         </div>
       )}
 
       {/* Scroll container */}
       <div
         ref={scrollRef}
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          position: "relative",
-          background: "var(--reader-bg)",
-        }}
+        className="pdf-scroll"
       >
         {error ? (
           <div style={{ padding: 24, textAlign: "center" }}>

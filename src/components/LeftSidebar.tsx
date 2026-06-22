@@ -91,6 +91,7 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
     return (
       <button
         onClick={() => node.document && onSelect(node.document)}
+        className={`tree-row ${isActive ? "active" : ""}`}
         style={{
           display: "block", width: "100%", padding: "4px 10px 4px 6px", textAlign: "left",
           paddingLeft: 6 + depth * 16,
@@ -101,7 +102,7 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
         }}
         title={node.name}
       >
-        📄 {node.name}
+        {node.name}
       </button>
     );
   }
@@ -110,6 +111,7 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
+        className="tree-row folder"
         style={{
           display: "block", width: "100%", padding: "4px 10px 4px 6px", textAlign: "left",
           paddingLeft: 6 + depth * 16,
@@ -119,7 +121,7 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
         }}
         title={node.name}
       >
-        {expanded ? "▼" : "▶"} 📁 {node.name}
+        {expanded ? "v" : ">"} {node.name}
       </button>
       {expanded && node.children.map((child, i) => (
         <TreeNodeItem key={child.name + i} node={child} depth={depth + 1} currentId={currentId} onSelect={onSelect} />
@@ -232,7 +234,7 @@ export default function LeftSidebar() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "recent", label: "Recent" },
-    { id: "toc", label: "TOC" },
+    { id: "toc", label: "Contents" },
     { id: "notes", label: "Notes" },
     { id: "settings", label: "Settings" },
   ];
@@ -273,7 +275,7 @@ export default function LeftSidebar() {
                   {libraryFolder && (
                     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, padding: "0 4px" }}>
                       <span style={{ fontSize: 11, color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        📁 {libraryFolder.split("/").pop() ?? libraryFolder}
+                        {libraryFolder.split("/").pop() ?? libraryFolder}
                       </span>
                       <button onClick={async () => {
                         try {
@@ -296,7 +298,7 @@ export default function LeftSidebar() {
                   No PDFs opened yet.
                 </p>
                 <p style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 4 }}>
-                  Tip: Press <kbd style={{ padding: "1px 4px", background: "var(--bg-tertiary)", borderRadius: 2, fontFamily: "inherit", border: "1px solid var(--border-color)" }}>Cmd+O</kbd> or click "Open PDF"
+                  Press <kbd style={{ padding: "1px 4px", background: "var(--bg-tertiary)", borderRadius: 2, fontFamily: "inherit", border: "1px solid var(--border-color)" }}>Cmd+O</kbd> to open a PDF.
                 </p>
               </>
             ) : libraryFolder ? (
@@ -375,7 +377,7 @@ export default function LeftSidebar() {
                         border: "none", borderRadius: 4, fontSize: 12, fontWeight: 500,
                         cursor: "pointer", alignSelf: "flex-start", marginBottom: 4,
                       }}>
-                      {isExporting ? "Exporting..." : "📥 Export Notes"}
+                      {isExporting ? "Exporting..." : "Export Notes"}
                     </button>
                     {annotations.map((ann) => (
                       <div key={ann.id} style={{
@@ -383,7 +385,7 @@ export default function LeftSidebar() {
                         border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13,
                       }}>
                         <div style={{ fontWeight: 500, marginBottom: 2 }}>
-                          {ann.type === "highlight" ? "🔦 Highlight" : ann.type === "note" ? "📝 Note" : ann.type}
+                          {ann.type === "highlight" ? "Highlight" : ann.type === "note" ? "Note" : ann.type}
                           <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 6 }}>
                             p.{ann.page_number}
                           </span>
