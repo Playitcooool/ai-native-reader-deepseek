@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod documents;
+pub mod library;
 pub mod notes;
 pub mod pages;
 pub mod settings;

@@ -9,7 +9,7 @@ use base64::Engine;
 
 use super::settings::DbState;
 
-fn compute_sha256(path: &str) -> Result<String, String> {
+pub(crate) fn compute_sha256(path: &str) -> Result<String, String> {
     let contents = fs::read(path).map_err(|e| format!("Failed to read file: {}", e))?;
     let mut hasher = Sha256::new();
     hasher.update(&contents);
