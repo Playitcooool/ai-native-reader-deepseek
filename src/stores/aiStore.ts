@@ -44,6 +44,26 @@ let cancelFlag = false;
 let streamBuffer = "";
 let streamTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Poll for page text to be extracted, up to timeoutMs. Returns true if text was available. */
+async function waitForPageText(
+  documentId: string,
+  pageNumber: number,
+  timeoutMs = 10000,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (cancelFlag) return false;
+    const result = await invoke<{ text: string | null } | null>("get_page_text", {
+      documentId,
+      pageNumber,
+    });
+    if (result?.text) return true;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  console.warn(`waitForPageText: page ${pageNumber} not available after ${timeoutMs}ms`);
+  return false;
+}
+
 function flushStreamBuffer(set: any) {
   if (streamBuffer) {
     set((s: AiState) => ({ streamingContent: s.streamingContent + streamBuffer }));
@@ -85,6 +105,15 @@ export const useAiStore = create<AiState>((set, get) => ({
         }
       });
       unlisten.push(tokenUnlisten);
+
+      // Wait for target page text to be extracted before calling AI
+      const pages = input.mode === "range_summary" && input.startPage && input.endPage
+        ? [input.pageNumber] // wait for the anchor page, range builder handles the rest
+        : [input.pageNumber];
+      for (const p of pages) {
+        if (cancelFlag) return null;
+        await waitForPageText(input.documentId, p);
+      }
 
       const result = await invoke<{
         message_id: string;
