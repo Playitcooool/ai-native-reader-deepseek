@@ -28,6 +28,7 @@ interface DocumentState {
   tocNodes: TocNode[];
   activeTocNodeId: string | null;
   isLoading: boolean;
+  libraryFolder: string | null;
   setDocuments: (docs: Document[]) => void;
   setCurrentDocument: (doc: Document | null) => void;
   setCurrentPage: (page: number) => void;
@@ -39,6 +40,8 @@ interface DocumentState {
   loadToc: (documentId: string) => Promise<void>;
   handleOpenPdf: () => Promise<void>;
   scrollToPage: (page: number) => void;
+  setLibraryFolder: (folder: string | null) => void;
+  loadLibraryFolder: () => Promise<void>;
 }
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
@@ -50,6 +53,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   tocNodes: [],
   activeTocNodeId: null,
   isLoading: false,
+  libraryFolder: null,
   setDocuments: (documents) => set({ documents }),
   setCurrentDocument: (doc) =>
     set({
@@ -63,6 +67,13 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   setTocNodes: (nodes) => set({ tocNodes: nodes }),
   setActiveTocNodeId: (id) => set({ activeTocNodeId: id }),
   scrollToPage: (page) => set({ currentPage: page }),
+  setLibraryFolder: (folder) => set({ libraryFolder: folder }),
+  loadLibraryFolder: async () => {
+    try {
+      const folder = await invoke<string | null>("get_library_folder");
+      set({ libraryFolder: folder });
+    } catch { /* ignore */ }
+  },
   loadDocuments: async () => {
     set({ isLoading: true });
     try {
