@@ -151,7 +151,7 @@ export function getHighlightColors(spans: TextSpan[], highlights: TextHighlight[
     if (start === null) continue;
     const end = start + needle.length;
     ranges.forEach((range, index) => {
-      if (range.start < end && start < range.end) colors[index] = h.color ?? "#fde047";
+      if (range.start < end && start < range.end) colors[index] = translucent(h.color ?? "#fde047");
     });
   }
   return colors;
@@ -170,6 +170,15 @@ function spanRanges(spans: TextSpan[]): Array<{ start: number; end: number }> & 
 
 function compact(text: string): string {
   return text.replace(/\s+/g, "");
+}
+
+function translucent(color: string): string {
+  const hex = color.match(/^#([0-9a-f]{6})$/i)?.[1];
+  if (!hex) return color;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, 0.35)`;
 }
 
 function findHighlightStart(fullText: string, selectedText: string, anchorJson?: string | null): number | null {

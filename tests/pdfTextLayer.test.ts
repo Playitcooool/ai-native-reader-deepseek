@@ -17,7 +17,7 @@ describe("getHighlightColors", () => {
         [span("The "), span("quick"), span(" brown"), span(" fox")],
         [{ selected_text: "quick brown", color: "#fde047" }],
       ),
-    ).toEqual([undefined, "#fde047", "#fde047", undefined]);
+    ).toEqual([undefined, "rgba(253, 224, 71, 0.35)", "rgba(253, 224, 71, 0.35)", undefined]);
   });
 
   it("uses anchor context when selected text repeats", () => {
@@ -26,6 +26,6 @@ describe("getHighlightColors", () => {
         [span("alpha "), span("term "), span("beta "), span("term"), span(" gamma")],
         [{ selected_text: "term", color: "#86efac", anchor_json: JSON.stringify({ prefix: "beta ", suffix: " gamma" }) }],
       ),
-    ).toEqual([undefined, undefined, undefined, "#86efac", undefined]);
+    ).toEqual([undefined, undefined, undefined, "rgba(134, 239, 172, 0.35)", undefined]);
   });
 });
