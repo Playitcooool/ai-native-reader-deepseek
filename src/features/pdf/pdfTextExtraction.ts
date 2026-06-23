@@ -18,7 +18,7 @@ export function joinPdfTextItemsBasic(items: TextItem[]): string {
     groups.set(roundedY, group);
   }
 
-  return Array.from(groups.entries())
+  return normalizeExtractedText(Array.from(groups.entries())
     .sort(([yA], [yB]) => yB - yA)
     .map(([, lineItems]) =>
       lineItems
@@ -26,7 +26,15 @@ export function joinPdfTextItemsBasic(items: TextItem[]): string {
         .map((item) => item.str.trim())
         .join(" "),
     )
-    .join("\n");
+    .join("\n"));
+}
+
+export function normalizeExtractedText(text: string): string {
+  return text
+    .replace(/-\n(?=\p{L})/gu, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }
 
 export interface PageExtractionResult {

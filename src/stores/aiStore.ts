@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { createWorker } from "tesseract.js";
+import { pagesNeededForWorkflow } from "../features/ai/workflowPages";
 
 export interface AiMessage {
   id: string;
@@ -48,25 +49,39 @@ let ocrWorker: any = null;
 /** Set the pdfjs document for on-demand OCR (called from PdfViewer). */
 export function setOcrPdfRef(pdf: any) { ocrPdfRef = pdf; }
 
+type TextWaitStatus = "ready" | "empty" | "unavailable";
+
 /** Run OCR on a single page using Tesseract.js. Saves text via IPC on success. */
-async function ocrPage(documentId: string, pageNumber: number): Promise<void> {
-  if (!ocrPdfRef) return;
+async function ocrPage(documentId: string, pageNumber: number): Promise<TextWaitStatus> {
+  if (!ocrPdfRef) return "unavailable";
   try {
     const worker = ocrWorker ?? (ocrWorker = await createWorker("eng"));
     const page = await ocrPdfRef.getPage(pageNumber);
     const viewport = page.getViewport({ scale: 2 }); // 2x for better OCR accuracy
-    const canvas = new OffscreenCanvas(viewport.width, viewport.height);
-    const ctx = canvas.getContext("2d")!;
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    page.cleanup();
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      page.cleanup();
+      return "unavailable";
+    }
+    try {
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    } finally {
+      page.cleanup();
+    }
 
     const { data } = await worker.recognize(canvas);
     const text = data.text.trim();
     if (text) {
       await invoke("save_page_text", { documentId, pageNumber, text });
+      return "ready";
     }
+    return "empty";
   } catch (err) {
     console.warn(`OCR failed for page ${pageNumber}:`, err);
+    return "unavailable";
   }
 }
 
@@ -74,32 +89,41 @@ let cancelFlag = false;
 let streamBuffer = "";
 let streamTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** Poll for page text to be extracted, up to timeoutMs. Returns true if text was available. */
+/** Poll for page text; run OCR for scanned pages before giving up. */
 async function waitForPageText(
   documentId: string,
   pageNumber: number,
   timeoutMs = 30000,
-): Promise<boolean> {
+  onOcrStart?: () => void,
+): Promise<TextWaitStatus> {
   const deadline = Date.now() + timeoutMs;
-  let ocrTriggered = false;
+  let ocrPromise: Promise<TextWaitStatus> | null = null;
   while (Date.now() < deadline) {
-    if (cancelFlag) return false;
+    if (cancelFlag) return "unavailable";
     const result = await invoke<{ text: string | null } | null>("get_page_text", {
       documentId,
       pageNumber,
     });
-    if (result?.text) return true;
+    if (result?.text?.trim()) return "ready";
 
     // After 1s of no text, assume scanned page and trigger OCR
-    if (!ocrTriggered && Date.now() - (deadline - timeoutMs) > 1000) {
-      ocrTriggered = true;
-      ocrPage(documentId, pageNumber).catch(() => {});
+    if (!ocrPromise && Date.now() - (deadline - timeoutMs) > 1000) {
+      onOcrStart?.();
+      ocrPromise = ocrPage(documentId, pageNumber);
     }
 
-    await new Promise((r) => setTimeout(r, 200));
+    if (ocrPromise) {
+      const status = await Promise.race([
+        ocrPromise,
+        new Promise<"pending">((r) => setTimeout(() => r("pending"), 200)),
+      ]);
+      if (status !== "pending") return status;
+    } else {
+      await new Promise((r) => setTimeout(r, 200));
+    }
   }
   console.warn(`waitForPageText: page ${pageNumber} not available after ${timeoutMs}ms`);
-  return false;
+  return "unavailable";
 }
 
 function flushStreamBuffer(set: any) {
@@ -144,14 +168,20 @@ export const useAiStore = create<AiState>((set, get) => ({
       });
       unlisten.push(tokenUnlisten);
 
-      // Wait for target page text to be extracted before calling AI
-      const pages = input.mode === "range_summary" && input.startPage && input.endPage
-        ? [input.pageNumber] // wait for the anchor page, range builder handles the rest
-        : [input.pageNumber];
+      // Wait for target page text/OCR before calling AI.
+      const pages = pagesNeededForWorkflow(input);
       for (const p of pages) {
         if (cancelFlag) return null;
-        set({ aiPhase: "waiting_for_text" });
-        await waitForPageText(input.documentId, p);
+        set({ aiPhase: `waiting_for_text:${p}` });
+        const status = await waitForPageText(input.documentId, p, 30000, () =>
+          set({ aiPhase: `ocr:${p}` }),
+        );
+        if (status !== "ready") {
+          const reason = status === "empty"
+            ? `OCR finished but found no readable text on page ${p}.`
+            : `Could not extract text from page ${p}.`;
+          throw new Error(`${reason} Try a clearer scan or a smaller page range.`);
+        }
       }
       set({ aiPhase: "building_context" });
 

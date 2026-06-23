@@ -242,7 +242,8 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
 
   const contextStatus = lastWorkflowInput
     ? `p.${lastWorkflowInput.pageNumber} · ${modeLabel(lastWorkflowInput.mode)} · ${
-        aiPhase === "waiting_for_text" ? "waiting for text/OCR" :
+        aiPhase.startsWith("ocr:") ? `OCR page ${aiPhase.split(":")[1]}` :
+        aiPhase.startsWith("waiting_for_text:") ? `extracting page ${aiPhase.split(":")[1]}` :
         aiPhase === "building_context" ? "building context" :
         aiPhase === "calling_ai" ? "querying AI" :
         "thinking"

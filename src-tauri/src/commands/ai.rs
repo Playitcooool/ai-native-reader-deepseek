@@ -621,6 +621,13 @@ pub async fn run_ai_workflow(
         .collect::<Vec<_>>()
         .join("\n\n");
 
+    let has_pdf_text = context_pack.hard_evidence.iter().any(|item| {
+        matches!(item.kind.as_str(), "page_text" | "range_text" | "selected_text")
+    });
+    if !has_pdf_text {
+        return Err("No readable text is available for this request yet. OCR may still be running; try again after it finishes.".into());
+    }
+
     let toc_path = context_pack.hard_evidence.iter()
         .find(|item| item.kind == "toc_breadcrumb")
         .map(|item| item.text.trim_start_matches("Section: "))
