@@ -20,7 +20,25 @@ function formatTime(totalSeconds: number): string {
 }
 
 const coverCache = new Map<string, string>();
-let coverQueue = Promise.resolve();
+// Concurrency pool — max 4 parallel cover renders
+const MAX_RENDERS = 4;
+let activeRenders = 0;
+const renderQueue: (() => void)[] = [];
+function scheduleCoverRender(fn: () => Promise<void>) {
+  const run = () => {
+    activeRenders++;
+    fn().finally(() => {
+      activeRenders--;
+      const next = renderQueue.shift();
+      if (next) next();
+    });
+  };
+  if (activeRenders < MAX_RENDERS) {
+    run();
+  } else {
+    renderQueue.push(run);
+  }
+}
 
 export default function CenterViewer({
   onBackHome,
@@ -125,20 +143,15 @@ function BookCover({ doc }: { doc: Document }) {
       setSrc(cached);
       return;
     }
-    const timer = window.setTimeout(() => {
-      coverQueue = coverQueue
-        .then(() => renderCover(doc.id, doc.document_type))
-        .then((cover) => {
-          if (!cover || cancelled) return;
-          coverCache.set(doc.id, cover);
-          setSrc(cover);
-        })
-        .catch(() => {});
-    }, 120);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
+    scheduleCoverRender(async () => {
+      if (cancelled) return;
+      const cover = await renderCover(doc.id, doc.document_type);
+      if (cover && !cancelled) {
+        coverCache.set(doc.id, cover);
+        setSrc(cover);
+      }
+    });
+    return () => { cancelled = true; };
   }, [doc.id]);
 
   return (
@@ -149,6 +162,14 @@ function BookCover({ doc }: { doc: Document }) {
 }
 
 async function renderCover(documentId: string, docType: string): Promise<string | null> {
+  // Check disk cache first
+  try {
+    const cached = await invoke<number[] | null>("get_cached_cover", { documentId });
+    if (cached && cached.length > 0) {
+      return URL.createObjectURL(new Blob([new Uint8Array(cached)]));
+    }
+  } catch { /* no cached cover */ }
+
   if (docType === 'epub') {
     try {
       const docs = useDocumentStore.getState().documents;
@@ -158,31 +179,34 @@ async function renderCover(documentId: string, docType: string): Promise<string 
         documentId, filePath: doc.file_path, documentType: docType,
       });
       if (!cover) return null;
-      const blob = new Blob([new Uint8Array(cover)]);
-      return URL.createObjectURL(blob);
+      return URL.createObjectURL(new Blob([new Uint8Array(cover)]));
     } catch { return null; }
   }
-  // PDF: existing pdfjs rendering
-  const data = await invoke<number[] | Uint8Array>("read_document_bytes", { documentId });
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
+
+  // PDF: render via pdfjs, then cache to disk
   try {
-    const page = await pdf.getPage(1);
+    const data = await invoke<number[] | Uint8Array>("read_document_bytes", { documentId });
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
     try {
-      const viewport = page.getViewport({ scale: 1 });
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const scale = 320 / viewport.width;
-      const renderViewport = page.getViewport({ scale: scale * dpr });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.floor(renderViewport.width);
-      canvas.height = Math.floor(renderViewport.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return null;
-      await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
-      return canvas.toDataURL("image/png");
-    } finally {
-      page.cleanup();
-    }
-  } finally {
-    pdf.destroy();
-  }
+      const page = await pdf.getPage(1);
+      try {
+        const viewport = page.getViewport({ scale: 1 });
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const scale = 320 / viewport.width;
+        const renderViewport = page.getViewport({ scale: scale * dpr });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.floor(renderViewport.width);
+        canvas.height = Math.floor(renderViewport.height);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
+        const dataUrl = canvas.toDataURL("image/png");
+        // Cache to disk for next app launch
+        const base64 = dataUrl.split(",")[1];
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        invoke("cache_cover", { documentId, data: Array.from(bytes) }).catch(() => {});
+        return dataUrl;
+      } finally { page.cleanup(); }
+    } finally { pdf.destroy(); }
+  } catch { return null; }
 }

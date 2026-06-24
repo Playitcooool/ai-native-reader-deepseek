@@ -1,8 +1,16 @@
 use crate::commands::settings::DbState;
 use crate::epub;
 use chrono::Utc;
+use std::path::PathBuf;
+use tauri::Manager;
 use tauri::State;
 use uuid::Uuid;
+
+fn covers_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("covers");
+    std::fs::create_dir_all(&dir).ok();
+    Ok(dir)
+}
 
 #[tauri::command]
 pub fn extract_epub_content(
@@ -58,16 +66,46 @@ pub fn extract_epub_content(
 
 #[tauri::command]
 pub fn get_document_cover(
-    _document_id: String,
+    document_id: String,
     file_path: String,
     document_type: String,
+    app: tauri::AppHandle,
 ) -> Result<Option<Vec<u8>>, String> {
+    // Check disk cache first
+    let cached = get_cached_cover_inner(&app, &document_id);
+    if let Some(data) = cached {
+        return Ok(Some(data));
+    }
     if document_type == "epub" {
         match epub::cover::extract_cover(&file_path) {
-            Some((data, _mime)) => Ok(Some(data)),
+            Some((data, _mime)) => {
+                // Cache it
+                let _ = std::fs::write(covers_dir(&app)?.join(&document_id), &data);
+                Ok(Some(data))
+            }
             None => Ok(None),
         }
     } else {
         Ok(None) // PDFs render covers via pdfjs page 1 in the frontend
     }
+}
+
+fn get_cached_cover_inner(app: &tauri::AppHandle, document_id: &str) -> Option<Vec<u8>> {
+    let path = covers_dir(app).ok()?.join(document_id);
+    if path.exists() {
+        std::fs::read(path).ok()
+    } else {
+        None
+    }
+}
+
+#[tauri::command]
+pub fn get_cached_cover(app: tauri::AppHandle, document_id: String) -> Result<Option<Vec<u8>>, String> {
+    Ok(get_cached_cover_inner(&app, &document_id))
+}
+
+#[tauri::command]
+pub fn cache_cover(app: tauri::AppHandle, document_id: String, data: Vec<u8>) -> Result<(), String> {
+    let path = covers_dir(&app)?.join(&document_id);
+    std::fs::write(&path, &data).map_err(|e| e.to_string())
 }
