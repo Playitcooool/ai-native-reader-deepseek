@@ -291,12 +291,6 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
       )}
 
       <div ref={listRef} role="log" aria-live="polite" aria-label="AI conversation" className="ai-log">
-        {messages.length === 0 && (
-          <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
-            <p>AI answers appear here.</p>
-            <p>Select text and press <strong>E</strong> to explain,<br />or click Summarize.</p>
-          </div>
-        )}
         {messages.map((msg) => (
           <div key={msg.id} style={{ ...messageStyle, background: msg.role === "user" ? "var(--bg-secondary)" : "var(--bg-primary)" }}>
             <div style={{ ...labelStyle, marginBottom: 2 }}>

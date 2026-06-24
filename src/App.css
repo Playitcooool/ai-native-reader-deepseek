@@ -376,6 +376,11 @@
   overflow: hidden;
 }
 
+.ai-sheet {
+  display: flex;
+  flex-direction: column;
+}
+
 .reader-drawer {
   left: 14px;
   width: min(360px, calc(100vw - 28px));
