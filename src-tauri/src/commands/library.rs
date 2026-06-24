@@ -105,7 +105,7 @@ fn scan_folder_into_db(
     };
 
     // Walk filesystem and compute hashes OUTSIDE the lock
-    let mut pending: Vec<(String, String, String)> = Vec::new(); // (path, filename, sha256)
+    let mut pending: Vec<(String, String, String, String)> = Vec::new(); // (path, filename, sha256, doc_type)
     let mut dirs = vec![std::path::PathBuf::from(folder_path)];
     while let Some(dir) = dirs.pop() {
         let Ok(entries) = fs::read_dir(&dir) else { continue };
@@ -113,17 +113,20 @@ fn scan_folder_into_db(
             let file_path = entry.path();
             if file_path.is_dir() {
                 dirs.push(file_path);
-            } else if file_path.extension().map(|e| e == "pdf").unwrap_or(false) {
-                let path_str = file_path.to_string_lossy().to_string();
-                if existing.contains(&path_str) {
-                    continue;
+            } else if let Some(ext) = file_path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+                if ext == "pdf" || ext == "epub" {
+                    let path_str = file_path.to_string_lossy().to_string();
+                    if existing.contains(&path_str) {
+                        continue;
+                    }
+                    let filename = file_path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    let sha256 = documents::compute_sha256(&path_str)?;
+                    let doc_type = if ext == "epub" { "epub" } else { "pdf" };
+                    pending.push((path_str, filename, sha256, doc_type.to_string()));
                 }
-                let filename = file_path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_default();
-                let sha256 = documents::compute_sha256(&path_str)?;
-                pending.push((path_str, filename, sha256));
             }
         }
     }
@@ -135,12 +138,12 @@ fn scan_folder_into_db(
     // Acquire lock only for the INSERTs
     let conn = conn_mutex.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
-    for (path_str, filename, sha256) in &pending {
+    for (path_str, filename, sha256, doc_type) in &pending {
         let id = Uuid::new_v4().to_string();
         conn.execute(
-            "INSERT INTO documents (id, title, original_filename, file_path, file_sha256, page_count, created_at, updated_at, last_opened_at, parse_status, has_native_toc)
-             VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, 'pending', 0)",
-            rusqlite::params![id, filename, filename, path_str, sha256, now, now, now],
+            "INSERT INTO documents (id, title, original_filename, file_path, file_sha256, page_count, created_at, updated_at, last_opened_at, parse_status, has_native_toc, document_type)
+             VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, 'pending', 0, ?9)",
+            rusqlite::params![id, filename, filename, path_str, sha256, now, now, now, doc_type],
         )
         .map_err(|e| e.to_string())?;
     }
@@ -186,35 +189,38 @@ fn start_watcher(
             };
             let mut imported = false;
             for path in &paths {
-                if path.extension().map(|e| e == "pdf").unwrap_or(false) {
-                    let path_str = path.to_string_lossy().to_string();
-                    let exists: bool = c
-                        .query_row(
-                            "SELECT COUNT(*) FROM documents WHERE file_path = ?1",
-                            rusqlite::params![path_str],
-                            |row| row.get::<_, i64>(0),
-                        )
-                        .unwrap_or(0)
-                        > 0;
-                    if !exists {
-                        let filename = path
-                            .file_name()
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        let sha256 =
-                            documents::compute_sha256(&path_str).unwrap_or_default();
-                        let id = Uuid::new_v4().to_string();
-                        let now = Utc::now().to_rfc3339();
-                        let _ = c.execute(
-                            "INSERT INTO documents (id,title,original_filename,file_path,\
-                             file_sha256,page_count,created_at,updated_at,last_opened_at,\
-                             parse_status,has_native_toc)
-                             VALUES (?1,?2,?3,?4,?5,NULL,?6,?7,?8,'pending',0)",
-                            rusqlite::params![
-                                id, filename, filename, path_str, sha256, now, now, now
-                            ],
-                        );
-                        imported = true;
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+                    if ext == "pdf" || ext == "epub" {
+                        let path_str = path.to_string_lossy().to_string();
+                        let exists: bool = c
+                            .query_row(
+                                "SELECT COUNT(*) FROM documents WHERE file_path = ?1",
+                                rusqlite::params![path_str],
+                                |row| row.get::<_, i64>(0),
+                            )
+                            .unwrap_or(0)
+                            > 0;
+                        if !exists {
+                            let filename = path
+                                .file_name()
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_default();
+                            let sha256 =
+                                documents::compute_sha256(&path_str).unwrap_or_default();
+                            let doc_type = if ext == "epub" { "epub" } else { "pdf" };
+                            let id = Uuid::new_v4().to_string();
+                            let now = Utc::now().to_rfc3339();
+                            let _ = c.execute(
+                                "INSERT INTO documents (id,title,original_filename,file_path,\
+                                 file_sha256,page_count,created_at,updated_at,last_opened_at,\
+                                 parse_status,has_native_toc,document_type)
+                                 VALUES (?1,?2,?3,?4,?5,NULL,?6,?7,?8,'pending',0,?9)",
+                                rusqlite::params![
+                                    id, filename, filename, path_str, sha256, now, now, now, doc_type
+                                ],
+                            );
+                            imported = true;
+                        }
                     }
                 }
             }
