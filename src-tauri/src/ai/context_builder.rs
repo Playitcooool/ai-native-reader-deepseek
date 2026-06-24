@@ -3,6 +3,19 @@ use rusqlite::Connection;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
+fn get_document_type(conn: &Connection, document_id: &str) -> String {
+    conn.query_row(
+        "SELECT document_type FROM documents WHERE id = ?1",
+        rusqlite::params![document_id],
+        |row| row.get::<_, String>(0),
+    )
+    .unwrap_or_else(|_| "pdf".to_string())
+}
+
+fn page_label(doc_type: &str) -> &'static str {
+    if doc_type == "epub" { "ch" } else { "p" }
+}
+
 fn page_text_cache() -> &'static Mutex<HashMap<String, String>> {
     static CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
@@ -229,6 +242,9 @@ pub fn build_selection_context(
     let mut warnings = Vec::new();
     let mut char_estimate: i64 = 0;
 
+    let doc_type = get_document_type(conn, document_id);
+    let label = page_label(&doc_type);
+
     // 1. Selected text (priority 1)
     hard_evidence.push(ContextItem {
         id: "selected_text".into(),
@@ -248,7 +264,7 @@ pub fn build_selection_context(
             id: "current_page".into(),
             kind: "page_text".into(),
             priority: 2,
-            text: format!("[p.{}]\n{}", page_number, text),
+            text: format!("[{}.{}]\n{}", label, page_number, text),
             page_number: Some(page_number),
             toc_node_id: toc_node_id.clone(),
             is_hard_evidence: true,
@@ -283,7 +299,7 @@ pub fn build_selection_context(
                         id: format!("nearby_page_{}", page),
                         kind: "nearby_page".into(),
                         priority: 4,
-                        text: format!("[p.{}]\n{}", page, text),
+                        text: format!("[{}.{}]\n{}", label, page, text),
                         page_number: Some(page),
                         toc_node_id: None,
                         is_hard_evidence: true,
@@ -349,13 +365,16 @@ pub fn build_page_context(
 
     let (toc_path, toc_node_id) = get_toc_breadcrumb(conn, document_id, page_number);
 
+    let doc_type = get_document_type(conn, document_id);
+    let label = page_label(&doc_type);
+
     // Current page text
     if let Some(text) = get_page_text(conn, document_id, page_number) {
         hard_evidence.push(ContextItem {
             id: "current_page".into(),
             kind: "page_text".into(),
             priority: 2,
-            text: format!("[p.{}]\n{}", page_number, text),
+            text: format!("[{}.{}]\n{}", label, page_number, text),
             page_number: Some(page_number),
             toc_node_id: toc_node_id.clone(),
             is_hard_evidence: true,
@@ -390,7 +409,7 @@ pub fn build_page_context(
                         id: format!("nearby_page_{}", page),
                         kind: "nearby_page".into(),
                         priority: 4,
-                        text: format!("[p.{}]\n{}", page, text),
+                        text: format!("[{}.{}]\n{}", label, page, text),
                         page_number: Some(page),
                         toc_node_id: None,
                         is_hard_evidence: true,
