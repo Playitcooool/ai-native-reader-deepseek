@@ -152,7 +152,7 @@ pub fn read_document_bytes(db: State<DbState>, document_id: String) -> Result<Ve
         })?
     };
 
-    fs::read(&file_path).map_err(|e| format!("Failed to read PDF at {}: {}", file_path, e))
+    fs::read(&file_path).map_err(|e| format!("Failed to read document at {}: {}", file_path, e))
 }
 
 #[tauri::command]
