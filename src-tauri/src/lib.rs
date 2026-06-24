@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod commands;
 pub mod db;
+pub mod epub;
 
 use commands::library::LibraryState;
 use commands::settings::DbState;
