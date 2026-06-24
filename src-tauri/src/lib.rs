@@ -3,6 +3,7 @@ pub mod commands;
 pub mod db;
 pub mod epub;
 pub mod ocr;
+pub mod pdf;
 
 use commands::library::LibraryState;
 use commands::settings::DbState;

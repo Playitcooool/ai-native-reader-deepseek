@@ -120,6 +120,7 @@ export default function CenterViewer({
             <button key={doc.id} className="book-card" onClick={() => setCurrentDocument(doc)}>
               <BookCover doc={doc} />
               <span className="book-title">{documentDisplayTitle(doc)}</span>
+              {doc.author && <span className="book-meta" style={{ color: "var(--text-muted)" }}>{doc.author}</span>}
               <span className="book-meta">
                 {doc.document_type === 'epub'
                 ? (doc.last_page ? `${doc.last_page}%` : doc.page_count ? `${doc.page_count} chapters` : "Ready")

@@ -19,6 +19,7 @@ export interface Document {
   parse_status: string | null;
   has_native_toc: boolean | null;
   document_type: 'pdf' | 'epub';
+  author: string | null;
 }
 
 export function documentDisplayTitle(doc: Pick<Document, "title" | "original_filename" | "file_path">): string {
@@ -54,6 +55,7 @@ interface DocumentState {
   startHeartbeat: () => void;
   stopHeartbeat: () => void;
   loadReadingStats: () => Promise<void>;
+  deleteDocument: (id: string) => Promise<void>;
 }
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
@@ -122,6 +124,13 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       const stats = await invoke<{ today_seconds: number; week_seconds: number }>("get_reading_stats");
       set({ dailyStats: { todaySeconds: stats.today_seconds, weekSeconds: stats.week_seconds } });
     } catch { /* ignore */ }
+  },
+  deleteDocument: async (id) => {
+    await invoke("delete_document", { documentId: id });
+    set((s) => ({
+      documents: s.documents.filter((d) => d.id !== id),
+      currentDocument: s.currentDocument?.id === id ? null : s.currentDocument,
+    }));
   },
   loadLibraryFolder: async () => {
     if (!isTauriRuntime()) return;

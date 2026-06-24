@@ -53,6 +53,16 @@ pub fn extract_epub_content(
         .map_err(|e| e.to_string())?;
     }
 
+    // Update document metadata (title, author) from EPUB
+    let (meta_title, meta_author) = crate::epub::extractor::extract_metadata(&file_path);
+    if meta_title.is_some() || meta_author.is_some() {
+        conn.execute(
+            "UPDATE documents SET title = COALESCE(?1, title), author = ?2 WHERE id = ?3",
+            rusqlite::params![meta_title, meta_author, document_id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
     // Update page_count and has_native_toc
     conn.execute(
         "UPDATE documents SET page_count = ?1, has_native_toc = 1, parse_status = 'ready' WHERE id = ?2",

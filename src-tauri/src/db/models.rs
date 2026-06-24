@@ -16,6 +16,7 @@ pub struct Document {
     pub parse_status: Option<String>,
     pub has_native_toc: Option<bool>,
     pub document_type: String,
+    pub author: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

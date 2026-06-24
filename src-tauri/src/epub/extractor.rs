@@ -74,6 +74,18 @@ fn flatten_nav(nav: &[epub::doc::NavPoint], level: u32, result: &mut Vec<(String
     }
 }
 
+/// Extract metadata (title, author) from an EPUB file.
+pub fn extract_metadata(path: &str) -> (Option<String>, Option<String>) {
+    let doc = match EpubDoc::new(Path::new(path)) {
+        Ok(d) => d,
+        Err(_) => return (None, None),
+    };
+    let get_val = |key: &str| doc.metadata.iter().find(|m| m.property == key).map(|m| m.value.clone()).filter(|s| !s.is_empty());
+    let title = get_val("title");
+    let author = get_val("creator");
+    (title, author)
+}
+
 fn strip_html(html: &str) -> String {
     use scraper::Html;
 

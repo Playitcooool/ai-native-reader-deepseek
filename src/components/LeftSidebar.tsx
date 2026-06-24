@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
@@ -64,38 +64,42 @@ function buildFileTree(docs: Document[], folderPath: string): FileNode[] {
   return root.children;
 }
 
-function FileTreeView({ nodes, currentId, onSelect }: {
+function FileTreeView({ nodes, currentId, onSelect, onContextMenu }: {
   nodes: FileNode[];
   currentId: string | null;
   onSelect: (doc: Document) => void;
+  onContextMenu?: (e: React.MouseEvent, doc: Document) => void;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {nodes.map((node, i) => (
-        <TreeNodeItem key={node.name + i} node={node} depth={0} currentId={currentId} onSelect={onSelect} />
+        <TreeNodeItem key={node.name + i} node={node} depth={0} currentId={currentId} onSelect={onSelect} onContextMenu={onContextMenu} />
       ))}
     </div>
   );
 }
 
-function TreeNodeItem({ node, depth, currentId, onSelect }: {
+function TreeNodeItem({ node, depth, currentId, onSelect, onContextMenu }: {
   node: FileNode;
   depth: number;
   currentId: string | null;
   onSelect: (doc: Document) => void;
+  onContextMenu?: (e: React.MouseEvent, doc: Document) => void;
 }) {
   const [expanded, setExpanded] = useState(depth < 1);
 
   if (!node.isDir) {
     const isActive = node.document?.id === currentId;
+    const title = node.document ? documentDisplayTitle(node.document) : node.name;
     return (
       <button
         onClick={() => node.document && onSelect(node.document)}
+        onContextMenu={(e) => node.document && onContextMenu?.(e, node.document)}
         className={`tree-leaf ${isActive ? "active" : ""}`}
         style={{ paddingLeft: 10 + depth * 16 }}
-        title={node.name}
+        title={title}
       >
-        {node.name}
+        {title}
       </button>
     );
   }
@@ -112,7 +116,7 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
         <span className="tree-folder-name">{node.name}</span>
       </button>
       {expanded && node.children.map((child, i) => (
-        <TreeNodeItem key={child.name + i} node={child} depth={depth + 1} currentId={currentId} onSelect={onSelect} />
+        <TreeNodeItem key={child.name + i} node={child} depth={depth + 1} currentId={currentId} onSelect={onSelect} onContextMenu={onContextMenu} />
       ))}
     </div>
   );
@@ -120,7 +124,12 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
 
 // ── End file tree helpers ──────────────────────────────────────
 
-function DocItem({ doc, currentId, onSelect }: { doc: Document; currentId: string | null; onSelect: (doc: Document) => void }) {
+function DocItem({ doc, currentId, onSelect, onContextMenu }: {
+  doc: Document;
+  currentId: string | null;
+  onSelect: (doc: Document) => void;
+  onContextMenu?: (e: React.MouseEvent, doc: Document) => void;
+}) {
   const isActive = doc.id === currentId;
   const meta = doc.document_type === 'epub'
     ? `EPUB · ${doc.page_count ?? "?"} ch`
@@ -128,9 +137,11 @@ function DocItem({ doc, currentId, onSelect }: { doc: Document; currentId: strin
   return (
     <button
       onClick={() => onSelect(doc)}
+      onContextMenu={(e) => onContextMenu?.(e, doc)}
       className={`recent-item ${isActive ? "active" : ""}`}
     >
       <span className="recent-item-title">{documentDisplayTitle(doc)}</span>
+      {doc.author && <span className="recent-item-meta">{doc.author}</span>}
       <span className="recent-item-meta">{meta}</span>
     </button>
   );
@@ -229,6 +240,39 @@ export default function LeftSidebar() {
 
   const [isExporting, setIsExporting] = useState(false);
 
+  // ── Context menu ──────────────────────────────────────────────
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; doc: Document } | null>(null);
+  const ctxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent && e.key !== "Escape") return;
+      if (e instanceof MouseEvent && ctxRef.current?.contains(e.target as Node)) return;
+      setCtxMenu(null);
+    };
+    // Delay listener so the current click doesn't close immediately
+    const id = setTimeout(() => document.addEventListener("click", close), 0);
+    document.addEventListener("keydown", close);
+    return () => { clearTimeout(id); document.removeEventListener("click", close); document.removeEventListener("keydown", close); };
+  }, [ctxMenu]);
+
+  const handleContextMenu = (e: React.MouseEvent, doc: Document) => {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, doc });
+  };
+
+  const handleDelete = async (doc: Document) => {
+    setCtxMenu(null);
+    if (!window.confirm(`Delete "${documentDisplayTitle(doc)}"? This cannot be undone.`)) return;
+    try {
+      await useDocumentStore.getState().deleteDocument(doc.id);
+      addToast({ type: "info", message: `Deleted "${documentDisplayTitle(doc)}".` });
+    } catch {
+      addToast({ type: "error", message: "Failed to delete document." });
+    }
+  };
+
   const handleExportNotes = async () => {
     if (notes.length === 0 || isExporting) return;
     setIsExporting(true);
@@ -323,13 +367,14 @@ export default function LeftSidebar() {
                   nodes={buildFileTree(documents, libraryFolder)}
                   currentId={currentDocument?.id ?? null}
                   onSelect={handleOpenDocument}
+                  onContextMenu={handleContextMenu}
                 />
                 {nonFolderDocs.length > 0 && (
                   <div style={{ marginTop: 8 }}>
                     <p className="recent-section-header">Other</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       {nonFolderDocs.map((doc) => (
-                        <DocItem key={doc.id} doc={doc} currentId={currentDocument?.id ?? null} onSelect={handleOpenDocument} />
+                        <DocItem key={doc.id} doc={doc} currentId={currentDocument?.id ?? null} onSelect={handleOpenDocument} onContextMenu={handleContextMenu} />
                       ))}
                     </div>
                   </div>
@@ -338,7 +383,7 @@ export default function LeftSidebar() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {documents.map((doc) => (
-                  <DocItem key={doc.id} doc={doc} currentId={currentDocument?.id ?? null} onSelect={handleOpenDocument} />
+                  <DocItem key={doc.id} doc={doc} currentId={currentDocument?.id ?? null} onSelect={handleOpenDocument} onContextMenu={handleContextMenu} />
                 ))}
               </div>
             )}
@@ -424,6 +469,18 @@ export default function LeftSidebar() {
         ) : null
       )}
       </div>
+      {ctxMenu && (
+        <div
+          ref={ctxRef}
+          className="ctx-menu"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          role="menu"
+        >
+          <button className="ctx-menu-item" role="menuitem" onClick={() => handleDelete(ctxMenu.doc)}>
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }

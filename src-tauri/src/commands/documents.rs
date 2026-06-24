@@ -31,22 +31,31 @@ pub fn import_document(db: State<DbState>, file_path: String) -> Result<Document
         })
         .unwrap_or_else(|| "pdf".to_string());
 
+    // Extract metadata from PDFs; EPUB metadata extracted later by extract_epub_content
+    let (meta_title, meta_author) = if doc_type == "pdf" {
+        crate::pdf::extract_metadata(&file_path)
+    } else {
+        (None, None)
+    };
+
     let sha256 = compute_sha256(&file_path)?;
 
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
 
+    let title = meta_title.clone().unwrap_or_else(|| filename.clone());
+
     conn.execute(
-        "INSERT INTO documents (id, title, original_filename, file_path, file_sha256, page_count, created_at, updated_at, last_opened_at, parse_status, has_native_toc, document_type)
-         VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, 'pending', 0, ?9)",
-        rusqlite::params![id, filename, filename, file_path, sha256, now, now, now, doc_type],
+        "INSERT INTO documents (id, title, original_filename, file_path, file_sha256, page_count, created_at, updated_at, last_opened_at, parse_status, has_native_toc, document_type, author)
+         VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, 'pending', 0, ?9, ?10)",
+        rusqlite::params![id, title, filename, file_path, sha256, now, now, now, doc_type, meta_author],
     )
     .map_err(|e| format!("Failed to insert document: {}", e))?;
 
     Ok(Document {
         id,
-        title: Some(filename.clone()),
+        title: Some(title),
         original_filename: filename,
         file_path,
         file_sha256: Some(sha256),
@@ -59,6 +68,7 @@ pub fn import_document(db: State<DbState>, file_path: String) -> Result<Document
         parse_status: Some("pending".into()),
         has_native_toc: Some(false),
         document_type: doc_type,
+        author: meta_author,
     })
 }
 
@@ -69,7 +79,7 @@ pub fn get_documents(db: State<DbState>) -> Result<Vec<Document>, String> {
         .prepare(
             "SELECT id, title, original_filename, file_path, file_sha256, page_count,
                     created_at, updated_at, last_opened_at, last_page, last_zoom,
-                    parse_status, has_native_toc, document_type
+                    parse_status, has_native_toc, document_type, author
              FROM documents
              ORDER BY last_opened_at DESC",
         )
@@ -92,6 +102,7 @@ pub fn get_documents(db: State<DbState>) -> Result<Vec<Document>, String> {
                 parse_status: row.get(11)?,
                 has_native_toc: row.get(12)?,
                 document_type: row.get(13)?,
+                author: row.get(14)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -108,7 +119,7 @@ pub fn get_document(db: State<DbState>, document_id: String) -> Result<Option<Do
         .prepare(
             "SELECT id, title, original_filename, file_path, file_sha256, page_count,
                     created_at, updated_at, last_opened_at, last_page, last_zoom,
-                    parse_status, has_native_toc, document_type
+                    parse_status, has_native_toc, document_type, author
              FROM documents WHERE id = ?1",
         )
         .map_err(|e| e.to_string())?;
@@ -130,6 +141,7 @@ pub fn get_document(db: State<DbState>, document_id: String) -> Result<Option<Do
                 parse_status: row.get(11)?,
                 has_native_toc: row.get(12)?,
                 document_type: row.get(13)?,
+                author: row.get(14)?,
             })
         })
         .map_err(|e| e.to_string())?;
