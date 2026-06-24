@@ -18,7 +18,7 @@ import { isTauriRuntime } from "./tauriRuntime";
 function App() {
   const { addToast } = useToast();
   const setSettings = useSettingsStore((s) => s.setSettings);
-  const handleOpenPdf = useDocumentStore((s) => s.handleOpenPdf);
+  const handleOpenDocument = useDocumentStore((s) => s.handleOpenDocument);
   const handleOpenFolder = useDocumentStore((s) => s.handleOpenFolder);
   const undoLast = useUndoStore((s) => s.undoLast);
   const setCurrentDocument = useDocumentStore((s) => s.setCurrentDocument);
@@ -115,12 +115,12 @@ function App() {
   useEffect(() => {
     if (!isTauriRuntime()) return;
     const unlisten = listen("menu-open-pdf", () => {
-      handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." }));
+      handleOpenDocument().catch(() => addToast({ type: "error", message: "Failed to open document." }));
     });
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [handleOpenPdf, addToast]);
+  }, [handleOpenDocument, addToast]);
 
   // Listen for native menu File > Open Folder (Cmd+Shift+O)
   useEffect(() => {

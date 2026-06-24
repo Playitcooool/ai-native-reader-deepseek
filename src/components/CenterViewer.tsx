@@ -18,7 +18,7 @@ export default function CenterViewer({
   onOpenLibrary?: () => void;
   onOpenAi?: (draft?: string) => void;
 }) {
-  const { documents, currentDocument, handleOpenPdf, handleOpenFolder, setCurrentDocument } = useDocumentStore();
+  const { documents, currentDocument, handleOpenDocument, handleOpenFolder, setCurrentDocument } = useDocumentStore();
   const { addToast } = useToast();
 
   if (currentDocument) {
@@ -44,11 +44,11 @@ export default function CenterViewer({
         <div>
           <p className="library-eyebrow">RustyBooks</p>
           <h1>Library</h1>
-          <p>{documents.length ? "Pick up where you left off." : "Add a PDF to begin."}</p>
+          <p>{documents.length ? "Pick up where you left off." : "Add a document to begin."}</p>
         </div>
         <div className="library-actions">
-          <button className="primary-action" onClick={() => handleOpenPdf().catch(() => addToast({ type: "error", message: "Failed to open PDF." }))}>
-            Open PDF
+          <button className="primary-action" onClick={() => handleOpenDocument().catch(() => addToast({ type: "error", message: "Failed to open document." }))}>
+            Open Document
           </button>
           <button onClick={() => handleOpenFolder().catch(() => addToast({ type: "error", message: "Failed to open folder." }))}>
             Folder

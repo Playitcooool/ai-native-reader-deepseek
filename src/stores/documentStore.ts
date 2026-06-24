@@ -18,6 +18,7 @@ export interface Document {
   last_zoom: number | null;
   parse_status: string | null;
   has_native_toc: boolean | null;
+  document_type: 'pdf' | 'epub';
 }
 
 export function documentDisplayTitle(doc: Pick<Document, "title" | "original_filename" | "file_path">): string {
@@ -43,7 +44,7 @@ interface DocumentState {
   setActiveTocNodeId: (id: string | null) => void;
   loadDocuments: () => Promise<void>;
   loadToc: (documentId: string) => Promise<void>;
-  handleOpenPdf: () => Promise<void>;
+  handleOpenDocument: () => Promise<void>;
   handleOpenFolder: () => Promise<void>;
   scrollToPage: (page: number) => void;
   setLibraryFolder: (folder: string | null) => void;
@@ -96,15 +97,18 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     const nodes = await invoke<TocNode[]>("get_toc_tree", { documentId });
     set({ tocNodes: nodes });
   },
-  handleOpenPdf: async () => {
+  handleOpenDocument: async () => {
     if (!isTauriRuntime()) return;
     const selected = await open({
       multiple: false,
-      filters: [{ name: "PDF", extensions: ["pdf"] }],
+      filters: [{ name: "Documents", extensions: ["pdf", "epub"] }],
     });
     if (!selected) return;
-    const doc = await invoke<Document>("import_pdf", { filePath: selected });
+    const doc = await invoke<Document>("import_document", { filePath: selected });
     get().setCurrentDocument(doc);
+    if (doc.document_type === 'epub') {
+      invoke("extract_epub_content", { documentId: doc.id, filePath: doc.file_path }).catch(() => {});
+    }
     const docs = await invoke<Document[]>("get_documents");
     get().setDocuments(docs);
   },
