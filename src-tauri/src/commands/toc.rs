@@ -176,7 +176,7 @@ pub fn get_toc_node_for_page(
         )
         .map_err(|e| e.to_string())?;
 
-    let mut rows = stmt
+    let rows = stmt
         .query_map(rusqlite::params![document_id, page_number], |row| {
             Ok(TocNode {
                 id: row.get(0)?,
