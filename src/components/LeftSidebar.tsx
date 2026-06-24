@@ -91,15 +91,8 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
     return (
       <button
         onClick={() => node.document && onSelect(node.document)}
-        className={`tree-row ${isActive ? "active" : ""}`}
-        style={{
-          display: "block", width: "100%", padding: "4px 10px 4px 6px", textAlign: "left",
-          paddingLeft: 6 + depth * 16,
-          background: isActive ? "var(--accent-color)" : "transparent",
-          color: isActive ? "#fff" : "var(--text-primary)",
-          border: "none", borderRadius: 2, fontSize: 12, cursor: "pointer",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-        }}
+        className={`tree-leaf ${isActive ? "active" : ""}`}
+        style={{ paddingLeft: 10 + depth * 16 }}
         title={node.name}
       >
         {node.name}
@@ -111,17 +104,12 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="tree-row folder"
-        style={{
-          display: "block", width: "100%", padding: "4px 10px 4px 6px", textAlign: "left",
-          paddingLeft: 6 + depth * 16,
-          background: "transparent", color: "var(--text-primary)",
-          border: "none", borderRadius: 2, fontSize: 12, fontWeight: 500, cursor: "pointer",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-        }}
+        className="tree-folder"
+        style={{ paddingLeft: 10 + depth * 16 }}
         title={node.name}
       >
-        {expanded ? "v" : ">"} {node.name}
+        <span className={`tree-folder-icon ${expanded ? "open" : ""}`}>▶</span>
+        <span className="tree-folder-name">{node.name}</span>
       </button>
       {expanded && node.children.map((child, i) => (
         <TreeNodeItem key={child.name + i} node={child} depth={depth + 1} currentId={currentId} onSelect={onSelect} />
@@ -131,6 +119,22 @@ function TreeNodeItem({ node, depth, currentId, onSelect }: {
 }
 
 // ── End file tree helpers ──────────────────────────────────────
+
+function DocItem({ doc, currentId, onSelect }: { doc: Document; currentId: string | null; onSelect: (doc: Document) => void }) {
+  const isActive = doc.id === currentId;
+  const meta = doc.document_type === 'epub'
+    ? `EPUB · ${doc.page_count ?? "?"} ch`
+    : `PDF · ${doc.page_count ?? "?"} pages`;
+  return (
+    <button
+      onClick={() => onSelect(doc)}
+      className={`recent-item ${isActive ? "active" : ""}`}
+    >
+      <span className="recent-item-title">{documentDisplayTitle(doc)}</span>
+      <span className="recent-item-meta">{meta}</span>
+    </button>
+  );
+}
 
 // Format annotations as Markdown for export
 function annotationsToMarkdown(annotations: Annotation[], docTitle: string | null): string {
@@ -285,8 +289,8 @@ export default function LeftSidebar() {
               {t.id === "recent" && (
                 <div>
                   {libraryFolder && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, padding: "0 4px" }}>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div className="recent-folder-bar">
+                      <span className="folder-name">
                         {libraryFolder.split("/").pop() ?? libraryFolder}
                       </span>
                       <button onClick={async () => {
@@ -295,7 +299,7 @@ export default function LeftSidebar() {
                           setLibraryFolder(null);
                           await loadDocuments();
                         } catch {}
-                      }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1 }} title="Disconnect folder">✕</button>
+                      }} title="Disconnect folder">✕</button>
                     </div>
                   )}
                   {docsLoading ? (
@@ -322,37 +326,19 @@ export default function LeftSidebar() {
                 />
                 {nonFolderDocs.length > 0 && (
                   <div style={{ marginTop: 8 }}>
-                    <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4, padding: "0 4px" }}>Other</p>
+                    <p className="recent-section-header">Other</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       {nonFolderDocs.map((doc) => (
-                        <button key={doc.id} onClick={() => handleOpenDocument(doc)} style={{
-                          display: "block", width: "100%", padding: "6px 10px", textAlign: "left",
-                          background: currentDocument?.id === doc.id ? "var(--accent-color)" : "var(--bg-secondary)",
-                          color: currentDocument?.id === doc.id ? "#fff" : "var(--text-primary)",
-                          border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 12, cursor: "pointer",
-                        }}>
-                          <div style={{ fontWeight: 500 }}>{documentDisplayTitle(doc)}</div>
-                        </button>
+                        <DocItem key={doc.id} doc={doc} currentId={currentDocument?.id ?? null} onSelect={handleOpenDocument} />
                       ))}
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {documents.map((doc) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => handleOpenDocument(doc)}
-                    style={{
-                      display: "block", width: "100%", padding: "8px 10px", textAlign: "left",
-                      background: currentDocument?.id === doc.id ? "var(--accent-color)" : "var(--bg-secondary)",
-                      color: currentDocument?.id === doc.id ? "#fff" : "var(--text-primary)",
-                      border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, cursor: "pointer",
-                    }}
-                  >
-                    <div style={{ fontWeight: 500 }}>{documentDisplayTitle(doc)}</div>
-                  </button>
+                  <DocItem key={doc.id} doc={doc} currentId={currentDocument?.id ?? null} onSelect={handleOpenDocument} />
                 ))}
               </div>
             )}
