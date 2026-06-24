@@ -203,19 +203,19 @@ pub fn save_pages_text(
     document_id: String,
     pages: Vec<PageTextInput>,
 ) -> Result<(), String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
-    conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
     for p in &pages {
         let id = page_row_id(&document_id, p.page_number);
         let char_count = p.text.chars().count() as i64;
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO pages (id, document_id, page_number, text, text_status, char_count, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, 'ready', ?5, ?6, ?7)",
             rusqlite::params![id, document_id, p.page_number, p.text, char_count, now, now],
         ).map_err(|e| e.to_string())?;
     }
-    conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
     for p in &pages {
         cache_page_text(&document_id, p.page_number, &p.text);
     }

@@ -167,6 +167,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             session_date TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_reading_sessions_date ON reading_sessions(session_date);
+        CREATE INDEX IF NOT EXISTS idx_annotations_doc ON annotations(document_id);
+        CREATE INDEX IF NOT EXISTS idx_ai_sessions_doc ON ai_sessions(document_id);
+        CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(session_id);
+        CREATE INDEX IF NOT EXISTS idx_toc_nodes_doc ON toc_nodes(document_id);
         ",
     )?;
 

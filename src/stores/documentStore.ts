@@ -37,6 +37,7 @@ interface DocumentState {
   libraryFolder: string | null;
   dailyStats: { todaySeconds: number; weekSeconds: number } | null;
   heartbeatInterval: ReturnType<typeof setInterval> | null;
+  _onVisibility: (() => void) | null;
   setDocuments: (docs: Document[]) => void;
   setCurrentDocument: (doc: Document | null) => void;
   setCurrentPage: (page: number) => void;
@@ -48,7 +49,6 @@ interface DocumentState {
   loadToc: (documentId: string) => Promise<void>;
   handleOpenDocument: () => Promise<void>;
   handleOpenFolder: () => Promise<void>;
-  scrollToPage: (page: number) => void;
   setLibraryFolder: (folder: string | null) => void;
   loadLibraryFolder: () => Promise<void>;
   startHeartbeat: () => void;
@@ -68,6 +68,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   libraryFolder: null,
   dailyStats: null,
   heartbeatInterval: null,
+  _onVisibility: null,
   setDocuments: (documents) => set({ documents }),
   setCurrentDocument: (doc) => {
     if (doc) {
@@ -86,7 +87,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   setZoom: (zoom) => set({ zoom: Math.max(0.25, Math.min(4.0, zoom)) }),
   setTocNodes: (nodes) => set({ tocNodes: nodes }),
   setActiveTocNodeId: (id) => set({ activeTocNodeId: id }),
-  scrollToPage: (page) => set({ currentPage: page }),
   setLibraryFolder: (folder) => set({ libraryFolder: folder }),
 
   startHeartbeat: () => {
@@ -106,13 +106,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     };
     document.addEventListener("visibilitychange", onVisibility);
 
-    set({ heartbeatInterval: interval });
+    set({ heartbeatInterval: interval, _onVisibility: onVisibility });
   },
 
   stopHeartbeat: () => {
-    const { heartbeatInterval } = get();
+    const { heartbeatInterval, _onVisibility } = get();
     if (heartbeatInterval) clearInterval(heartbeatInterval);
-    set({ heartbeatInterval: null });
+    if (_onVisibility) document.removeEventListener("visibilitychange", _onVisibility);
+    set({ heartbeatInterval: null, _onVisibility: null });
   },
 
   loadReadingStats: async () => {

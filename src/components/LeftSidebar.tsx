@@ -424,13 +424,6 @@ export default function LeftSidebar() {
         ) : null
       )}
       </div>
-      <style>{`
-        @keyframes skeleton-pulse {
-          0% { opacity: 0.3; }
-          50% { opacity: 0.6; }
-          100% { opacity: 0.3; }
-        }
-      `}</style>
     </div>
   );
 }
