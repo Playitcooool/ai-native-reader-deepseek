@@ -6,3 +6,4 @@ src-tauri/node_modules/
 *.log
 .vite/
 dist/index.html
+docs/superpowers/
