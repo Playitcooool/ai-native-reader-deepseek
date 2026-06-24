@@ -215,6 +215,63 @@ pub fn update_page_count(
 }
 
 #[tauri::command]
+pub fn refresh_document_metadata(
+    db: State<DbState>,
+    document_id: String,
+    file_path: String,
+    document_type: String,
+) -> Result<Document, String> {
+    let (meta_title, meta_author) = if document_type == "pdf" {
+        crate::pdf::extract_metadata(&file_path)
+    } else {
+        (None, None)
+    };
+
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    if meta_title.is_some() || meta_author.is_some() {
+        conn.execute(
+            "UPDATE documents SET title = COALESCE(NULLIF(?1, ''), title), author = COALESCE(NULLIF(?2, ''), author) WHERE id = ?3",
+            rusqlite::params![meta_title, meta_author, document_id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    // Return the updated document
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, title, original_filename, file_path, file_sha256, page_count,
+                    created_at, updated_at, last_opened_at, last_page, last_zoom,
+                    parse_status, has_native_toc, document_type, author
+             FROM documents WHERE id = ?1",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let doc = stmt
+        .query_row(rusqlite::params![document_id], |row| {
+            Ok(Document {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                original_filename: row.get(2)?,
+                file_path: row.get(3)?,
+                file_sha256: row.get(4)?,
+                page_count: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                last_opened_at: row.get(8)?,
+                last_page: row.get(9)?,
+                last_zoom: row.get(10)?,
+                parse_status: row.get(11)?,
+                has_native_toc: row.get(12)?,
+                document_type: row.get(13)?,
+                author: row.get(14)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    Ok(doc)
+}
+
+#[tauri::command]
 pub fn delete_document(db: State<DbState>, document_id: String) -> Result<(), String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM documents WHERE id = ?1", rusqlite::params![document_id])

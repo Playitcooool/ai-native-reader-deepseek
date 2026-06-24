@@ -93,6 +93,7 @@ pub fn run() {
             commands::documents::update_last_page,
             commands::documents::update_last_zoom,
             commands::documents::update_page_count,
+            commands::documents::refresh_document_metadata,
             commands::documents::delete_document,
             commands::pages::save_page_text,
             commands::pages::save_pages_text,
