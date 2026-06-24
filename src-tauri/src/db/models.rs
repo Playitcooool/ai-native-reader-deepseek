@@ -15,6 +15,7 @@ pub struct Document {
     pub last_zoom: Option<f64>,
     pub parse_status: Option<String>,
     pub has_native_toc: Option<bool>,
+    pub document_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

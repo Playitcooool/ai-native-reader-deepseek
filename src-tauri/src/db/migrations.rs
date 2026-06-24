@@ -24,7 +24,8 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             last_page INTEGER DEFAULT 1,
             last_zoom REAL DEFAULT 1.0,
             parse_status TEXT DEFAULT 'pending',
-            has_native_toc INTEGER DEFAULT 0
+            has_native_toc INTEGER DEFAULT 0,
+            document_type TEXT DEFAULT 'pdf'
         );
 
         CREATE TABLE IF NOT EXISTS pages (
@@ -161,5 +162,8 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         );
         ",
     )?;
+
+    // Add document_type column for existing databases
+    let _ = conn.execute("ALTER TABLE documents ADD COLUMN document_type TEXT DEFAULT 'pdf'", []);
     Ok(())
 }
