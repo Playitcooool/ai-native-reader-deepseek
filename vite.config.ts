@@ -21,4 +21,17 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          pdfjs: ["pdfjs-dist"],
+          epubjs: ["epubjs"],
+          markdown: ["react-markdown"],
+          vendor: ["react", "react-dom", "zustand"],
+        },
+      },
+    },
+  },
 }));

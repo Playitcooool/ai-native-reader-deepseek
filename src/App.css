@@ -18,54 +18,6 @@
   position: relative;
 }
 
-.sidebar-left.collapsed,
-.sidebar-right.collapsed {
-  min-width: 36px;
-  max-width: 36px;
-  overflow: hidden;
-}
-
-.collapse-btn {
-  position: absolute;
-  top: 46px;
-  z-index: 5;
-  width: 24px;
-  height: 32px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-  font-size: 22px;
-  line-height: 1;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--text-primary);
-  opacity: 0.9;
-  transition: background 0.15s, opacity 0.15s;
-}
-
-.collapse-btn:hover {
-  opacity: 1;
-  background: var(--bg-secondary);
-}
-
-.collapse-left {
-  right: -12px;
-}
-
-.collapse-right {
-  left: -12px;
-}
-
-.sidebar-left.collapsed .collapse-left,
-.sidebar-right.collapsed .collapse-right {
-  opacity: 1;
-}
-
 .sidebar-left .tabs,
 .reader-drawer .tabs {
   display: flex;
@@ -127,25 +79,6 @@
   min-height: 0;
   overflow-y: auto;
   padding: 12px 14px;
-}
-
-.tree-row {
-  border: 0 !important;
-  border-radius: 8px !important;
-  background: transparent !important;
-  color: var(--text-primary) !important;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tree-row:hover {
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent) !important;
-}
-
-.tree-row.active {
-  background: color-mix(in srgb, var(--accent-color) 18%, transparent) !important;
 }
 
 /* ── Recent list beautification ────────────────────────────── */
@@ -543,34 +476,6 @@
 
 .empty-state p {
   font-size: 14px;
-}
-
-.sidebar-right {
-  width: var(--ai-sidebar-width);
-  min-width: 200px;
-  max-width: 600px;
-  background: var(--bg-primary);
-  border-left: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.splitter {
-  width: 5px;
-  cursor: col-resize;
-  flex-shrink: 0;
-  background: transparent;
-  position: relative;
-  z-index: 10;
-  transition: background 0.15s;
-}
-
-.splitter:hover,
-.splitter:active {
-  background: var(--accent-color);
 }
 
 .ai-header {

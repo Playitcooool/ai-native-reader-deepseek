@@ -223,7 +223,7 @@ fn start_watcher(
                             let title = meta_title.clone().unwrap_or_else(|| filename.clone());
                             let id = Uuid::new_v4().to_string();
                             let now = Utc::now().to_rfc3339();
-                            let _ = c.execute(
+                            if let Err(e) = c.execute(
                                 "INSERT INTO documents (id,title,original_filename,file_path,\
                                  file_sha256,page_count,created_at,updated_at,last_opened_at,\
                                  parse_status,has_native_toc,document_type,author)
@@ -231,8 +231,11 @@ fn start_watcher(
                                 rusqlite::params![
                                     id, title, filename, path_str, sha256, now, now, now, doc_type, meta_author
                                 ],
-                            );
-                            imported = true;
+                            ) {
+                                eprintln!("Watcher: failed to insert {}: {}", filename, e);
+                            } else {
+                                imported = true;
+                            }
                         }
                     }
                 }

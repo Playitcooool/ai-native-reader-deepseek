@@ -8,6 +8,7 @@ pub mod pdf;
 use commands::library::LibraryState;
 use commands::settings::DbState;
 use std::sync::Mutex;
+use std::time::Duration;
 use tauri::Emitter;
 use tauri::Manager;
 use tauri::menu::{MenuBuilder, SubmenuBuilder, MenuItemBuilder};
@@ -35,12 +36,22 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .expect("failed to resolve app data dir");
-            std::fs::create_dir_all(&app_dir).ok();
+            if let Err(e) = std::fs::create_dir_all(&app_dir) {
+                eprintln!("Warning: failed to create app data dir: {}", e);
+            }
             let db_path = app_dir.join("reader.db");
-            let conn =
-                db::migrations::initialize_database(&db_path).expect("failed to initialize database");
+            let conn = db::migrations::initialize_database(&db_path).unwrap_or_else(|e| {
+                panic!("Failed to initialize database at {}: {}", db_path.display(), e);
+            });
             app.manage(DbState(Mutex::new(conn)));
-            app.manage(reqwest::Client::new());
+            app.manage(
+                reqwest::Client::builder()
+                    .connect_timeout(Duration::from_secs(10))
+                    .tcp_keepalive(Duration::from_secs(30))
+                    .user_agent("RustyBooks/1.0")
+                    .build()
+                    .expect("failed to build HTTP client"),
+            );
 
             app.manage(LibraryState {
                 watcher: std::sync::Mutex::new(None),

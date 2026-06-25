@@ -7,10 +7,19 @@ use uuid::Uuid;
 use chrono::Utc;
 use super::settings::DbState;
 
+use std::io::Read;
+
 pub(crate) fn compute_sha256(path: &str) -> Result<String, String> {
-    let contents = fs::read(path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let mut file = fs::File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
     let mut hasher = Sha256::new();
-    hasher.update(&contents);
+    let mut buf = [0u8; 65536];
+    loop {
+        let n = file.read(&mut buf).map_err(|e| format!("Failed to read file: {}", e))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
     Ok(hex::encode(hasher.finalize()))
 }
 

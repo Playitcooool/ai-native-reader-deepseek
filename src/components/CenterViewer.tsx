@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import * as pdfjsLib from "pdfjs-dist";
 import "../pdfjs";
 import { documentDisplayTitle, type Document, useDocumentStore } from "../stores/documentStore";
 import PdfViewer from "./PdfViewer";
-import EpubViewer from "../features/epub/EpubViewer";
+const EpubViewer = lazy(() => import("../features/epub/EpubViewer"));
 import { useToast } from "./Toast";
 
 function formatTime(totalSeconds: number): string {
@@ -63,13 +63,15 @@ export default function CenterViewer({
           {documentDisplayTitle(currentDocument)}
         </h1>
         {currentDocument.document_type === 'epub' ? (
-          <EpubViewer
-            key={currentDocument.id}
-            documentId={currentDocument.id}
-            onBackHome={onBackHome}
-            onOpenLibrary={onOpenLibrary}
-            onOpenAi={onOpenAi}
-          />
+          <Suspense fallback={null}>
+            <EpubViewer
+              key={currentDocument.id}
+              documentId={currentDocument.id}
+              onBackHome={onBackHome}
+              onOpenLibrary={onOpenLibrary}
+              onOpenAi={onOpenAi}
+            />
+          </Suspense>
         ) : (
           <PdfViewer
             key={currentDocument.id}
