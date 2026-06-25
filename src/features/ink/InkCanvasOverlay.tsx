@@ -7,8 +7,7 @@ import {
   normalizePoint,
   parseInkAnchor,
   simplifyLocalPoints,
-  splitStrokeByEraser,
-  strokeHitByEraser,
+  strokeInsideLasso,
   type InkAnchor,
   type InkPoint,
   type InkSpace,
@@ -91,13 +90,17 @@ export default function InkCanvasOverlay({
       } else if (toolState.activeTool === "eraser") {
         ctx.save();
         ctx.strokeStyle = "rgba(220, 38, 38, 0.72)";
-        ctx.lineWidth = toolState.eraserWidth;
+        ctx.lineWidth = 2;
         ctx.setLineDash([3, 3]);
-        renderPath(ctx, draft);
+        ctx.beginPath();
+        ctx.moveTo(draft[0].x, draft[0].y);
+        for (let i = 1; i < draft.length; i++) ctx.lineTo(draft[i].x, draft[i].y);
+        if (draft.length >= 3) ctx.closePath();
+        ctx.stroke();
         ctx.restore();
       }
     }
-  }, [draft, height, inks, renderScale, size, toolState.activeTool, toolState.color, toolState.eraserWidth, toolState.penWidth, width]);
+  }, [draft, height, inks, renderScale, size, toolState.activeTool, toolState.color, toolState.penWidth, width]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -152,43 +155,18 @@ export default function InkCanvasOverlay({
 
   const commitEraser = async (points: InkPoint[]) => {
     const eraserPath = simplifyLocalPoints(points, 1);
-    if (eraserPath.length < 2) return;
+    if (eraserPath.length < 3) return;
 
-    const affected = inks.filter(({ anchor }) => strokeHitByEraser(anchor, eraserPath, size, toolState.eraserWidth, renderScale));
+    const affected = inks.filter(({ anchor }) => strokeInsideLasso(anchor, eraserPath, size));
     if (affected.length === 0) return;
 
-    const replacements: Array<{ original: InkAnnotation; anchor: InkAnchor }> = [];
-    for (const item of affected) {
-      const fragments = splitStrokeByEraser(item.anchor, eraserPath, size, toolState.eraserWidth, renderScale);
-      for (const anchor of fragments) replacements.push({ original: item, anchor });
-    }
-
-    const created: Annotation[] = [];
     for (const item of affected) {
       await invoke("delete_annotation", { annotationId: item.annotation.id });
-    }
-    for (const replacement of replacements) {
-      const createdAnnotation = await invoke<Annotation>("create_annotation", {
-        input: {
-          document_id: documentId,
-          page_number: pageNumber,
-          toc_node_id: null,
-          type: "ink",
-          selected_text: null,
-          note_text: null,
-          color: replacement.original.annotation.color,
-          anchor: JSON.stringify(replacement.anchor),
-        },
-      });
-      created.push(createdAnnotation);
     }
 
     pushUndo({
       label: "erase ink",
       undo: async () => {
-        for (const annotation of created) {
-          await invoke("delete_annotation", { annotationId: annotation.id });
-        }
         for (const item of affected) {
           await invoke("create_annotation", {
             input: {

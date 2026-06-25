@@ -35,7 +35,6 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
     activeTool: "none",
     color: "#111827",
     penWidth: 4,
-    eraserWidth: 16,
   });
   const [pageCount, setPageCount] = useState(0);
   const [basePageHeight, setBasePageHeight] = useState(0);

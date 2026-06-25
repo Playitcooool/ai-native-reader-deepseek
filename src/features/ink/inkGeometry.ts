@@ -18,7 +18,6 @@ export interface InkToolState {
   activeTool: "none" | "pen" | "eraser";
   color: string;
   penWidth: number;
-  eraserWidth: number;
 }
 
 export interface InkSize {
@@ -28,7 +27,6 @@ export interface InkSize {
 
 export const INK_COLORS = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#f97316", "#9333ea"];
 export const PEN_WIDTHS = [2, 4, 8, 12];
-export const ERASER_WIDTHS = [8, 16, 28];
 
 export function parseInkAnchor(value: string | null): InkAnchor | null {
   if (!value) return null;
@@ -86,54 +84,24 @@ export function simplifyLocalPoints(points: InkPoint[], minDistance = 1.5): InkP
   return simplified;
 }
 
-export function strokeHitByEraser(
+export function strokeInsideLasso(
   stroke: InkAnchor,
-  eraserPoints: InkPoint[],
+  lassoPoints: InkPoint[],
   size: InkSize,
-  eraserWidth: number,
-  strokeScale = 1,
 ): boolean {
+  if (lassoPoints.length < 3) return false;
   const local = stroke.points.map((p) => denormalizePoint(p, size));
-  const radius = eraserWidth / 2 + (stroke.width * strokeScale) / 2;
-  return polylineDistance(local, eraserPoints) <= radius;
-}
+  if (!local.every((point) => pointInPolygon(point, lassoPoints))) return false;
 
-export function splitStrokeByEraser(
-  stroke: InkAnchor,
-  eraserPoints: InkPoint[],
-  size: InkSize,
-  eraserWidth: number,
-  strokeScale = 1,
-): InkAnchor[] {
-  const local = stroke.points.map((p) => denormalizePoint(p, size));
-  const radius = eraserWidth / 2 + (stroke.width * strokeScale) / 2;
-  const keep: boolean[] = local.map((point) => pointDistanceToPolyline(point, eraserPoints) > radius);
-
-  const fragments: InkAnchor[] = [];
-  let current: InkPoint[] = keep[0] ? [stroke.points[0]] : [];
-  const flush = () => {
-    if (current.length >= 2) {
-      fragments.push({ ...stroke, points: current });
+  for (let i = 0; i < local.length - 1; i++) {
+    for (let j = 0; j < lassoPoints.length; j++) {
+      const next = (j + 1) % lassoPoints.length;
+      if (segmentsIntersect(local[i], local[i + 1], lassoPoints[j], lassoPoints[next])) {
+        return false;
+      }
     }
-    current = [];
-  };
-
-  for (let i = 1; i < stroke.points.length; i++) {
-    const segmentErased = segmentDistanceToPolyline(local[i - 1], local[i], eraserPoints) <= radius;
-    if (segmentErased) {
-      flush();
-      if (keep[i]) current = [stroke.points[i]];
-      continue;
-    }
-    if (!keep[i]) {
-      flush();
-      continue;
-    }
-    if (current.length === 0 && keep[i - 1]) current.push(stroke.points[i - 1]);
-    current.push(stroke.points[i]);
   }
-  flush();
-  return fragments;
+  return true;
 }
 
 function clamp01(value: number): number {
@@ -144,46 +112,17 @@ function distance(a: InkPoint, b: InkPoint): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function polylineDistance(a: InkPoint[], b: InkPoint[]): number {
-  let best = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < a.length - 1; i++) {
-    best = Math.min(best, segmentDistanceToPolyline(a[i], a[i + 1], b));
+function pointInPolygon(point: InkPoint, polygon: InkPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    if (pointOnSegment(point, polygon[j], polygon[i])) return true;
+    const crosses = polygon[i].y > point.y !== polygon[j].y > point.y;
+    if (crosses) {
+      const x = ((polygon[j].x - polygon[i].x) * (point.y - polygon[i].y)) / (polygon[j].y - polygon[i].y) + polygon[i].x;
+      if (point.x < x) inside = !inside;
+    }
   }
-  return best;
-}
-
-function pointDistanceToPolyline(point: InkPoint, polyline: InkPoint[]): number {
-  let best = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < polyline.length - 1; i++) {
-    best = Math.min(best, pointToSegmentDistance(point, polyline[i], polyline[i + 1]));
-  }
-  return best;
-}
-
-function segmentDistanceToPolyline(a: InkPoint, b: InkPoint, polyline: InkPoint[]): number {
-  let best = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < polyline.length - 1; i++) {
-    best = Math.min(best, segmentToSegmentDistance(a, b, polyline[i], polyline[i + 1]));
-  }
-  return best;
-}
-
-function segmentToSegmentDistance(a: InkPoint, b: InkPoint, c: InkPoint, d: InkPoint): number {
-  if (segmentsIntersect(a, b, c, d)) return 0;
-  return Math.min(
-    pointToSegmentDistance(a, c, d),
-    pointToSegmentDistance(b, c, d),
-    pointToSegmentDistance(c, a, b),
-    pointToSegmentDistance(d, a, b),
-  );
-}
-
-function pointToSegmentDistance(point: InkPoint, a: InkPoint, b: InkPoint): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  if (dx === 0 && dy === 0) return distance(point, a);
-  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)));
-  return distance(point, { x: a.x + t * dx, y: a.y + t * dy });
+  return inside;
 }
 
 function segmentsIntersect(a: InkPoint, b: InkPoint, c: InkPoint, d: InkPoint): boolean {
@@ -191,7 +130,21 @@ function segmentsIntersect(a: InkPoint, b: InkPoint, c: InkPoint, d: InkPoint): 
   const o2 = orientation(a, b, d);
   const o3 = orientation(c, d, a);
   const o4 = orientation(c, d, b);
+  if (o1 === 0 && pointOnSegment(c, a, b)) return true;
+  if (o2 === 0 && pointOnSegment(d, a, b)) return true;
+  if (o3 === 0 && pointOnSegment(a, c, d)) return true;
+  if (o4 === 0 && pointOnSegment(b, c, d)) return true;
   return o1 * o2 < 0 && o3 * o4 < 0;
+}
+
+function pointOnSegment(point: InkPoint, a: InkPoint, b: InkPoint): boolean {
+  return (
+    orientation(a, b, point) === 0 &&
+    point.x >= Math.min(a.x, b.x) &&
+    point.x <= Math.max(a.x, b.x) &&
+    point.y >= Math.min(a.y, b.y) &&
+    point.y <= Math.max(a.y, b.y)
+  );
 }
 
 function orientation(a: InkPoint, b: InkPoint, c: InkPoint): number {

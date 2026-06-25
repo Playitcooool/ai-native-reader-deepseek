@@ -1,10 +1,5 @@
 import { Icon } from "../../components/Icons";
-import {
-  ERASER_WIDTHS,
-  INK_COLORS,
-  PEN_WIDTHS,
-  type InkToolState,
-} from "./inkGeometry";
+import { INK_COLORS, PEN_WIDTHS, type InkToolState } from "./inkGeometry";
 
 interface InkToolbarControlsProps {
   value: InkToolState;
@@ -61,19 +56,6 @@ export default function InkToolbarControls({ value, onChange }: InkToolbarContro
         </span>
       )}
 
-      {value.activeTool === "eraser" && (
-        <span className="ink-popover" aria-label="Eraser settings">
-          <select
-            value={value.eraserWidth}
-            onChange={(event) => onChange({ ...value, eraserWidth: Number(event.target.value) })}
-            aria-label="Eraser width"
-          >
-            {ERASER_WIDTHS.map((width) => (
-              <option key={width} value={width}>{width}px</option>
-            ))}
-          </select>
-        </span>
-      )}
     </span>
   );
 }

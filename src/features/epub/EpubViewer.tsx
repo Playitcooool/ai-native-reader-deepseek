@@ -29,7 +29,6 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
     activeTool: "none",
     color: "#111827",
     penWidth: 4,
-    eraserWidth: 16,
   });
   const { currentDocument, setCurrentPage, setTocNodes } = useDocumentStore();
   const theme = useSettingsStore((s) => s.theme);

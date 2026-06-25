@@ -668,14 +668,19 @@
 }
 
 .ink-popover {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  z-index: 20;
   display: inline-flex;
   align-items: center;
   gap: 7px;
   min-height: 30px;
   padding: 3px 6px;
-  border-radius: 999px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--bg-primary) 92%, var(--text-primary) 8%);
   border: 1px solid var(--border-color);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.16);
 }
 
 .ink-swatches {
@@ -824,14 +829,6 @@
     display: none;
   }
 
-  .ink-popover {
-    position: absolute;
-    top: calc(100% + 7px);
-    left: 0;
-    z-index: 20;
-    border-radius: 10px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.16);
-  }
 }
 
 @keyframes skeleton-pulse {
