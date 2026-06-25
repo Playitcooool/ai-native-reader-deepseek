@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Util } from "pdfjs-dist";
 import type { PDFPageProxy } from "pdfjs-dist";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 
@@ -41,17 +42,7 @@ export default memo(function PdfTextLayer({ page, scale, onSelection, containerW
         const items = textContent.items as TextItem[];
         const textSpans: TextSpan[] = items
           .filter((item) => item.str?.trim().length > 0)
-          .map((item) => {
-            const tx = item.transform;
-            return {
-              text: item.str,
-              x: tx[4] * scale,
-              y: viewport.height - tx[5] * scale,
-              width: item.width * scale,
-              height: (item.height || 12) * scale,
-              fontSize: (item.height || 12) * scale,
-            };
-          });
+          .map((item) => buildTextSpan(item, viewport.transform, scale));
         if (!cancelled) setSpans(textSpans);
       } catch (err) {
         console.warn("Failed to build text layer:", err);
@@ -106,10 +97,14 @@ export default memo(function PdfTextLayer({ page, scale, onSelection, containerW
           style={{
             position: "absolute",
             left: s.x,
-            top: s.y - s.height,
+            top: s.y,
+            display: "block",
+            width: s.width,
+            height: s.height,
             fontSize: s.fontSize,
             whiteSpace: "pre",
             lineHeight: 1,
+            overflow: "hidden",
             background: spanHighlightColors[i],
           }}
         >
@@ -119,6 +114,20 @@ export default memo(function PdfTextLayer({ page, scale, onSelection, containerW
     </div>
   );
 });
+
+export function buildTextSpan(item: TextItem, viewportTransform: number[], scale: number): TextSpan {
+  const tx = Util.transform(viewportTransform, item.transform);
+  const fontHeight = Math.hypot(tx[2], tx[3]) || (item.height || 12) * scale;
+  const width = Math.max(item.width * scale, 0);
+  return {
+    text: item.str,
+    x: tx[4],
+    y: tx[5] - fontHeight,
+    width,
+    height: fontHeight,
+    fontSize: fontHeight,
+  };
+}
 
 function getContextText(range: Range, dir: 'before' | 'after'): string {
   try {
