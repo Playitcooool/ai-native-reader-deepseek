@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import { PDFDocumentProxy } from "pdfjs-dist";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import "../pdfjs";
 import { documentDisplayTitle, useDocumentStore } from "../stores/documentStore";
 import { useSettingsStore } from "../stores/settingsStore";

@@ -63,7 +63,7 @@ export default function CenterViewer({
           {documentDisplayTitle(currentDocument)}
         </h1>
         {currentDocument.document_type === 'epub' ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)" }}>Loading EPUB…</div>}>
             <EpubViewer
               key={currentDocument.id}
               documentId={currentDocument.id}

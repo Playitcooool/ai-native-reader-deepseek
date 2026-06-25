@@ -177,8 +177,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_ai_sessions_doc ON ai_sessions(document_id);
         CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(session_id);
         CREATE INDEX IF NOT EXISTS idx_toc_nodes_doc ON toc_nodes(document_id);
-        CREATE INDEX IF NOT EXISTS idx_pages_doc_page ON pages(document_id, page_number);
-        CREATE INDEX IF NOT EXISTS idx_toc_doc_page_level ON toc_nodes(document_id, start_page, level);
+        CREATE INDEX IF NOT EXISTS idx_toc_doc_page_end_level ON toc_nodes(document_id, start_page, end_page, level);
         ",
     )?;
 

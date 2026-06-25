@@ -135,18 +135,21 @@ fn scan_folder_into_db(
         return Ok(0);
     }
 
-    // Acquire lock only for the INSERTs
-    let conn = conn_mutex.lock().map_err(|e| e.to_string())?;
-    let now = Utc::now().to_rfc3339();
-    for (path_str, filename, sha256, doc_type) in &pending {
-        let id = Uuid::new_v4().to_string();
-        // Extract metadata from PDFs (EPUB metadata extracted on first open)
+    // Extract metadata before acquiring the lock (avoids blocking DB during file I/O)
+    let enriched: Vec<(String, String, String, String, String, String, Option<String>)> = pending.iter().map(|(path_str, filename, sha256, doc_type)| {
         let (meta_title, meta_author) = if doc_type == "pdf" {
             crate::pdf::extract_metadata(path_str)
         } else {
             (None, None)
         };
-        let title = meta_title.clone().unwrap_or_else(|| filename.clone());
+        let title = meta_title.unwrap_or_else(|| filename.clone());
+        (Uuid::new_v4().to_string(), title, filename.clone(), path_str.clone(), sha256.clone(), doc_type.clone(), meta_author)
+    }).collect();
+
+    // Acquire lock only for the INSERTs
+    let conn = conn_mutex.lock().map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    for (id, title, filename, path_str, sha256, doc_type, meta_author) in &enriched {
         conn.execute(
             "INSERT INTO documents (id, title, original_filename, file_path, file_sha256, page_count, created_at, updated_at, last_opened_at, parse_status, has_native_toc, document_type, author)
              VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, 'pending', 0, ?9, ?10)",
@@ -184,7 +187,7 @@ fn start_watcher(
             Ok(c) => c,
             Err(_) => return,
         };
-        let _ = c.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
+        let _ = c.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA synchronous=NORMAL; PRAGMA cache_size=-8000;");
         for event in rx {
             let Ok(Event {
                 kind: EventKind::Create(_),

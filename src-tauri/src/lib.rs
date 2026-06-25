@@ -40,13 +40,13 @@ pub fn run() {
                 eprintln!("Warning: failed to create app data dir: {}", e);
             }
             let db_path = app_dir.join("reader.db");
-            let conn = db::migrations::initialize_database(&db_path).unwrap_or_else(|e| {
-                panic!("Failed to initialize database at {}: {}", db_path.display(), e);
-            });
+            let conn = db::migrations::initialize_database(&db_path)
+                .expect("failed to initialize database");
             app.manage(DbState(Mutex::new(conn)));
             app.manage(
                 reqwest::Client::builder()
                     .connect_timeout(Duration::from_secs(10))
+                    .timeout(Duration::from_secs(180))
                     .tcp_keepalive(Duration::from_secs(30))
                     .user_agent("RustyBooks/1.0")
                     .build()
