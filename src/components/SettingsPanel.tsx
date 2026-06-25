@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettingsStore, type ProviderSettingsInput } from "../stores/settingsStore";
 
@@ -9,19 +9,25 @@ export default function SettingsPanel() {
   const [model, setModel] = useState("");
   const [providerType, setProviderType] = useState("openai_compatible");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isDefault, setIsDefault] = useState(true);
+  const [isTranslation, setIsTranslation] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const initialLoadDone = useRef(false);
 
-  // Populate form from saved settings
+  // Populate form from saved settings — only from blank state, never after save
   useEffect(() => {
-    if (settings.length > 0) {
+    if (settings.length > 0 && !initialLoadDone.current) {
+      initialLoadDone.current = true;
       const s = settings[0];
       setBaseUrl(s.base_url ?? "");
       setApiKey(s.api_key ?? "");
       setModel(s.model);
       setProviderType(s.provider_type);
       setEditingId(s.id);
+      setIsDefault(s.is_default ?? true);
+      setIsTranslation(s.is_translation ?? false);
     }
   }, [settings]);
 
@@ -35,11 +41,12 @@ export default function SettingsPanel() {
         base_url: baseUrl || undefined,
         api_key: apiKey || undefined,
         model,
-        is_default: true,
+        is_default: isDefault,
+        is_translation: isTranslation,
       };
       const result = await invoke<{
         id: string; provider_type: string; base_url: string | null;
-        api_key: string | null; model: string; is_default: boolean | null;
+        api_key: string | null; model: string; is_default: boolean | null; is_translation: boolean | null;
         created_at: string; updated_at: string;
       }>("save_provider_settings", { input });
 
@@ -85,6 +92,8 @@ export default function SettingsPanel() {
     setModel(s.model);
     setProviderType(s.provider_type);
     setEditingId(s.id);
+    setIsDefault(s.is_default ?? true);
+    setIsTranslation(s.is_translation ?? false);
     setStatus(null);
   };
 
@@ -115,6 +124,16 @@ export default function SettingsPanel() {
       <input id="model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini"
         style={{ padding: "6px 8px", border: "1px solid var(--border-color)", borderRadius: 4, fontSize: 13, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
 
+      <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", cursor: "pointer" }}>
+        <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
+        Use as default provider (for Explain, Summarize, Q&A)
+      </label>
+
+      <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", cursor: "pointer" }}>
+        <input type="checkbox" checked={isTranslation} onChange={(e) => setIsTranslation(e.target.checked)} />
+        Use as translation provider
+      </label>
+
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={handleSave} disabled={saving} title="Save"
           style={{ padding: "6px 12px", background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 4, fontSize: 15, lineHeight: 1, cursor: "pointer" }}>
@@ -143,15 +162,27 @@ export default function SettingsPanel() {
             >
               <div style={{ fontWeight: 500 }}>{s.model}</div>
               <div style={{ fontSize: 11, opacity: 0.8 }}>{s.base_url ?? "N/A"}</div>
-              <button onClick={(e) => { e.stopPropagation(); handleTest(s.id); }} disabled={testing} title="Test connection"
-                style={{
-                  marginTop: 4, padding: "2px 6px", background: "transparent",
-                  color: editingId === s.id ? "#fff" : "var(--accent-color)",
-                  border: `1px solid ${editingId === s.id ? "#fff" : "var(--accent-color)"}`,
-                  borderRadius: 3, fontSize: 13, lineHeight: 1, cursor: "pointer",
-                }}>
-                {testing ? "⏳" : "▶"}
-              </button>
+              <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                {s.is_default && (
+                  <span style={{ fontSize: 10, background: "var(--accent-color)", color: "#fff", padding: "1px 5px", borderRadius: 3 }}>
+                    Default
+                  </span>
+                )}
+                {s.is_translation && (
+                  <span style={{ fontSize: 10, background: "var(--success-color)", color: "#fff", padding: "1px 5px", borderRadius: 3 }}>
+                    Translate
+                  </span>
+                )}
+                <button onClick={(e) => { e.stopPropagation(); handleTest(s.id); }} disabled={testing} title="Test connection"
+                  style={{
+                    padding: "2px 6px", background: "transparent",
+                    color: editingId === s.id ? "#fff" : "var(--accent-color)",
+                    border: `1px solid ${editingId === s.id ? "#fff" : "var(--accent-color)"}`,
+                    borderRadius: 3, fontSize: 13, lineHeight: 1, cursor: "pointer",
+                  }}>
+                  {testing ? "⏳" : "▶"}
+                </button>
+              </div>
             </div>
           ))}
         </div>

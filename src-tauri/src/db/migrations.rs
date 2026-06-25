@@ -181,8 +181,9 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         ",
     )?;
 
-    // Add document_type column for existing databases
+    // Add columns for existing databases
     let _ = conn.execute("ALTER TABLE documents ADD COLUMN document_type TEXT DEFAULT 'pdf'", []);
     let _ = conn.execute("ALTER TABLE documents ADD COLUMN author TEXT DEFAULT NULL", []);
+    let _ = conn.execute("ALTER TABLE provider_settings ADD COLUMN is_translation INTEGER DEFAULT 0", []);
     Ok(())
 }

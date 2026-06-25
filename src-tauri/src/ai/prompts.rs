@@ -110,3 +110,11 @@ pub fn ask_current_section(
     );
     (system_message().to_string(), user)
 }
+
+/// Prompt for translating selected text to Chinese.
+pub fn translate(selected_text: &str) -> (String, String) {
+    let system = "You are a translator. Translate the given text to Chinese. \
+                  Preserve original formatting. Return only the translation, no explanations.";
+    let user = format!("Translate to Chinese:\n\n{}", selected_text);
+    (system.to_string(), user)
+}

@@ -27,6 +27,7 @@ pub struct ProviderSettings {
     pub api_key: Option<String>,
     pub model: String,
     pub is_default: Option<bool>,
+    pub is_translation: Option<bool>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -40,6 +41,7 @@ pub struct ProviderSettingsInput {
     pub api_key: Option<String>,
     pub model: String,
     pub is_default: Option<bool>,
+    pub is_translation: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

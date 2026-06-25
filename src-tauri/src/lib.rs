@@ -142,6 +142,7 @@ pub fn run() {
             commands::epub::get_document_cover,
             commands::epub::get_cached_cover,
             commands::epub::cache_cover,
+            commands::translate::translate_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

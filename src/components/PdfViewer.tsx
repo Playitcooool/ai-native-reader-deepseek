@@ -275,6 +275,19 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
     }
   }, [currentDocument, selectionText, currentPage, onOpenAi, clearSelection, runWorkflow, addToast]);
 
+  // Handle Translate action
+  const handleTranslate = useCallback(async (text: string) => {
+    if (!currentDocument) return null;
+    try {
+      return await invoke<string>("translate_text", {
+        input: { selected_text: text },
+      });
+    } catch (err) {
+      addToast({ type: "error", message: "Translation failed." });
+      return null;
+    }
+  }, [addToast]);
+
   // Scroll to page (used by keyboard nav)
   const goToPage = useCallback(
     (page: number) => {
@@ -552,6 +565,7 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
             onOpenAi?.(`About this selection:\n\n${text}`);
           }}
           onExplain={handleExplain}
+          onTranslate={handleTranslate}
         />
       )}
 

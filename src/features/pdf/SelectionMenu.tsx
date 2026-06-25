@@ -12,6 +12,7 @@ interface SelectionMenuProps {
   onClose: () => void;
   onExplain: () => void;
   onAsk?: (text: string) => void;
+  onTranslate?: (text: string) => Promise<string | null>;
 }
 
 const highlightColors = ["#fde047", "#86efac", "#93c5fd", "#f0abfc"];
@@ -25,10 +26,13 @@ export default function SelectionMenu({
   onClose,
   onExplain,
   onAsk,
+  onTranslate,
 }: SelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [saved, setSaved] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const [translating, setTranslating] = useState(false);
+  const [translationResult, setTranslationResult] = useState<string | null>(null);
   const { addToast } = useToast();
   const pushUndo = useUndoStore((s) => s.pushUndo);
 
@@ -106,8 +110,101 @@ export default function SelectionMenu({
     }
   };
 
+  const handleTranslate = async () => {
+    if (!onTranslate) return;
+    setTranslating(true);
+    try {
+      const result = await onTranslate(selectedText);
+      if (result) {
+        setTranslationResult(result);
+      }
+    } catch {
+      addToast({ type: "error", message: "Translation failed." });
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   useEffect(() => () => clearTimeout(toastSaved.current), []);
 
+  // Style helpers
+  const menuStyle: React.CSSProperties = {
+    position: "fixed",
+    top: Math.max(8, (position?.y ?? 0) - 48),
+    left: Math.max(8, (position?.x ?? 0)),
+    zIndex: 1000,
+    display: "flex",
+    gap: 4,
+    padding: "4px 6px",
+    background: "var(--bg-primary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: 6,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+    fontSize: 12,
+    alignItems: "center",
+  };
+
+  // Translation result view
+  if (translationResult) {
+    return (
+      <div
+        ref={menuRef}
+        role="dialog"
+        aria-label="Translation"
+        style={{
+          position: "fixed",
+          top: Math.max(8, (position?.y ?? 0) + 16),
+          left: Math.max(8, (position?.x ?? 0)),
+          zIndex: 1000,
+          maxWidth: 500,
+          padding: "10px 14px",
+          background: "var(--bg-primary)",
+          border: "1px solid var(--border-color)",
+          borderRadius: 8,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+          fontSize: 14,
+          lineHeight: 1.6,
+          color: "var(--text-primary)",
+        }}
+      >
+        <div style={{ marginBottom: 8 }}>{translationResult}</div>
+        <button
+          autoFocus
+          onClick={onClose}
+          style={{
+            padding: "4px 10px",
+            background: "var(--accent-color)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 4,
+            fontSize: 12,
+            cursor: "pointer",
+          }}
+        >
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  // Translating loading state
+  if (translating) {
+    return (
+      <div
+        ref={menuRef}
+        role="status"
+        aria-live="polite"
+        style={{
+          ...menuStyle,
+          gap: 6,
+        }}
+      >
+        <span style={{ color: "var(--text-secondary)" }}>Translating…</span>
+      </div>
+    );
+  }
+
+  // Saved indicator
   if (saved) {
     return (
       <div
@@ -153,21 +250,7 @@ export default function SelectionMenu({
       role="menu"
       aria-label="Text selection actions"
       onKeyDown={handleMenuKey}
-      style={{
-        position: "fixed",
-        top: Math.max(8, (position?.y ?? 0) - 48),
-        left: Math.max(8, (position?.x ?? 0)),
-        zIndex: 1000,
-        display: "flex",
-        gap: 4,
-        padding: "4px 6px",
-        background: "var(--bg-primary)",
-        border: "1px solid var(--border-color)",
-        borderRadius: 6,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        fontSize: 12,
-        alignItems: "center",
-      }}
+      style={menuStyle}
     >
       <button
         role="menuitem"
@@ -200,6 +283,22 @@ export default function SelectionMenu({
         }}
       >
         Ask
+      </button>
+      <button
+        role="menuitem"
+        onMouseDown={keepPdfSelection}
+        onClick={handleTranslate}
+        title="Translate selection"
+        style={{
+          padding: "4px 10px",
+          background: "transparent",
+          color: "var(--text-primary)",
+          border: "1px solid var(--border-color)",
+          borderRadius: 4,
+          fontSize: 12,
+        }}
+      >
+        Translate
       </button>
       <div role="group" aria-label="Highlight color" style={{ display: "flex", gap: 3 }}>
         {highlightColors.map((color) => (

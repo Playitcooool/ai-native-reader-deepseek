@@ -7,6 +7,7 @@ export interface ProviderSettings {
   api_key: string | null;
   model: string;
   is_default: boolean | null;
+  is_translation: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +19,7 @@ export interface ProviderSettingsInput {
   api_key?: string;
   model: string;
   is_default?: boolean;
+  is_translation?: boolean;
 }
 
 interface SettingsState {
