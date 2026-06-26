@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pagesNeededForWorkflow } from "../src/features/ai/workflowPages";
 import { inferAskScope } from "../src/features/ai/promptScope";
+import { samplePagesForOpen } from "../src/features/pdf/pdfTextExtraction";
 import type { TocNode } from "../src/features/toc/TocSidebar";
 
 describe("pagesNeededForWorkflow", () => {
@@ -24,6 +25,17 @@ describe("pagesNeededForWorkflow", () => {
       startPage: 3,
       endPage: 5,
     })).toEqual([3, 4, 5]);
+  });
+});
+
+describe("samplePagesForOpen", () => {
+  it("samples page 1 and the current page", () => {
+    expect(samplePagesForOpen(7, 20)).toEqual([1, 7]);
+  });
+
+  it("deduplicates and clamps samples", () => {
+    expect(samplePagesForOpen(1, 20)).toEqual([1]);
+    expect(samplePagesForOpen(30, 20)).toEqual([1]);
   });
 });
 

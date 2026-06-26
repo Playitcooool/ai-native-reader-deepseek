@@ -1,4 +1,5 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
+import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 
 /**
  * Position-aware PDF text item joiner.
@@ -43,6 +44,28 @@ export interface PageExtractionResult {
   charCount: number;
 }
 
+export type TextReadyStatus = "ready" | "empty" | "unavailable";
+
+interface PageTextCoverage {
+  page_number: number;
+  text_status: string;
+  char_count: number;
+}
+
+interface PageTextRow {
+  text: string | null;
+  text_status?: string;
+  char_count?: number;
+}
+
+export interface TextReadinessOptions {
+  pdf?: any;
+  invoke?: typeof tauriInvoke;
+  ocrPage?: (documentId: string, pageNumber: number, pdf: any) => Promise<TextReadyStatus>;
+  onPhase?: (phase: string, pageNumber: number) => void;
+  isCancelled?: () => boolean;
+}
+
 /**
  * Extract text from a single PDF page.
  */
@@ -58,6 +81,110 @@ export async function extractPageText(
     text,
     charCount: text.length,
   };
+}
+
+export function samplePagesForOpen(currentPage: number, pageCount: number): number[] {
+  const pages = [1, currentPage]
+    .filter((page) => Number.isFinite(page) && page >= 1 && page <= pageCount);
+  return Array.from(new Set(pages));
+}
+
+/** Render one page and let the backend OCR + save it. */
+export async function ocrPage(
+  documentId: string,
+  pageNumber: number,
+  pdf: any,
+  invokeFn: typeof tauriInvoke = tauriInvoke,
+): Promise<TextReadyStatus> {
+  if (!pdf) return "unavailable";
+  const page = await pdf.getPage(pageNumber);
+  const viewport = page.getViewport({ scale: 2 });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(viewport.width);
+  canvas.height = Math.ceil(viewport.height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) { page.cleanup(); return "unavailable"; }
+  try {
+    await page.render({ canvasContext: ctx, viewport }).promise;
+  } finally {
+    page.cleanup();
+  }
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) return "unavailable";
+  const imagePng = new Uint8Array(await blob.arrayBuffer());
+  const status = await invokeFn<string>("ocr_page", { documentId, pageNumber, imagePng });
+  return status === "ok" || status === "skipped" ? "ready" : "empty";
+}
+
+async function pageReady(documentId: string, pageNumber: number, invokeFn: typeof tauriInvoke) {
+  const row = await invokeFn<PageTextRow | null>("get_page_text", { documentId, pageNumber });
+  return !!(row?.text?.trim() || (row?.text_status === "ready" && (row.char_count ?? 0) > 0));
+}
+
+export async function ensurePagesTextReady(
+  documentId: string,
+  pages: number[],
+  options: TextReadinessOptions = {},
+): Promise<{ ready: number; failed: number }> {
+  const invokeFn = options.invoke ?? tauriInvoke;
+  const requestedPages = Array.from(new Set(pages.filter((page) => page >= 1))).sort((a, b) => a - b);
+  if (requestedPages.length === 0) return { ready: 0, failed: 0 };
+
+  for (const pageNumber of requestedPages) {
+    if (options.isCancelled?.()) break;
+    if (await pageReady(documentId, pageNumber, invokeFn)) continue;
+
+    let nativeText = "";
+    if (options.pdf) {
+      options.onPhase?.("waiting_for_text", pageNumber);
+      try {
+        nativeText = (await extractPageText(options.pdf, pageNumber)).text;
+      } catch {
+        nativeText = "";
+      }
+    }
+
+    if (nativeText.trim()) {
+      await invokeFn("save_pages_text", {
+        documentId,
+        pages: [{ pageNumber, text: nativeText }],
+      });
+      continue;
+    }
+
+    if (options.pdf) {
+      options.onPhase?.("ocr", pageNumber);
+      await (options.ocrPage
+        ? options.ocrPage(documentId, pageNumber, options.pdf)
+        : ocrPage(documentId, pageNumber, options.pdf, invokeFn)
+      ).catch(() => "unavailable");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  const coverage = await invokeFn<PageTextCoverage[]>("get_pages_text_coverage", {
+    documentId,
+    startPage: requestedPages[0],
+    endPage: requestedPages[requestedPages.length - 1],
+  });
+  const requested = new Set(requestedPages);
+  const ready = coverage.filter((page) =>
+    requested.has(page.page_number) && page.text_status === "ready" && page.char_count > 0
+  ).length;
+  return { ready, failed: requestedPages.length - ready };
+}
+
+export function ensureDocumentTextReady(
+  documentId: string,
+  pageCount: number,
+  options: TextReadinessOptions = {},
+): Promise<{ ready: number; failed: number }> {
+  return ensurePagesTextReady(
+    documentId,
+    Array.from({ length: Math.max(0, pageCount) }, (_, i) => i + 1),
+    options,
+  );
 }
 
 /**

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { pagesNeededForWorkflow } from "../features/ai/workflowPages";
-import { extractPageText } from "../features/pdf/pdfTextExtraction";
+import { ensurePagesTextReady } from "../features/pdf/pdfTextExtraction";
 
 export interface AiMessage {
   id: string;
@@ -51,149 +51,10 @@ export function setOcrPdfRef(pdf: any) {
   ocrPdfRef = pdf;
 }
 
-type TextWaitStatus = "ready" | "empty" | "unavailable";
-
-interface PageTextCoverage {
-  page_number: number;
-  text_status: string;
-  char_count: number;
-}
-
-/** Run OCR on a single page via Rust backend leptess. Sends PNG bytes, saves to DB. */
-async function ocrPage(documentId: string, pageNumber: number): Promise<TextWaitStatus> {
-  if (!ocrPdfRef) return "unavailable";
-  const page = await ocrPdfRef.getPage(pageNumber);
-  const viewport = page.getViewport({ scale: 2 }); // 2x for better OCR accuracy
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(viewport.width);
-  canvas.height = Math.ceil(viewport.height);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) { page.cleanup(); return "unavailable"; }
-  try {
-    await page.render({ canvasContext: ctx, viewport }).promise;
-  } finally {
-    page.cleanup();
-  }
-
-  // Canvas → PNG blob → Uint8Array (binary IPC)
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-  if (!blob) return "unavailable";
-  const pngBytes = new Uint8Array(await blob.arrayBuffer());
-
-  // Rust handles OCR + DB save in one call; throws on failure with backend error message
-  const status = await invoke<string>("ocr_page", {
-    documentId,
-    pageNumber,
-    imagePng: pngBytes,
-  });
-
-  return status === "ok" || status === "skipped" ? "ready" : "empty";
-}
-
 let cancelFlag = false;
 let isWorkflowRunning = false;
 let streamBuffer = "";
 let streamTimer: ReturnType<typeof setTimeout> | null = null;
-
-/** Poll for page text; run OCR for scanned pages before giving up. */
-async function waitForPageText(
-  documentId: string,
-  pageNumber: number,
-  timeoutMs = 30000,
-  onOcrStart?: () => void,
-): Promise<TextWaitStatus> {
-  const deadline = Date.now() + timeoutMs;
-  let ocrPromise: Promise<TextWaitStatus> | null = null;
-  while (true) {
-    if (cancelFlag) return "unavailable";
-    const result = await invoke<{ text: string | null } | null>("get_page_text", {
-      documentId,
-      pageNumber,
-    });
-    if (result?.text?.trim()) return "ready";
-
-    // After 1s of no text, assume scanned page and trigger OCR
-    if (!ocrPromise && Date.now() - (deadline - timeoutMs) > 1000) {
-      onOcrStart?.();
-      ocrPromise = ocrPage(documentId, pageNumber);
-    }
-
-    if (ocrPromise) {
-      if (Date.now() >= deadline) return "unavailable";
-      const status = await Promise.race([
-        ocrPromise,
-        new Promise<"pending">((r) => setTimeout(() => r("pending"), 200)),
-      ]);
-      if (status !== "pending") return status;
-    } else {
-      if (Date.now() >= deadline) {
-        console.warn(`waitForPageText: page ${pageNumber} not available after ${timeoutMs}ms`);
-        return "unavailable";
-      }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-  }
-}
-
-async function ensurePagesReadyForWorkflow(
-  documentId: string,
-  pages: number[],
-  set: any,
-): Promise<{ ready: number; failed: number }> {
-  const coverage = await invoke<PageTextCoverage[]>("get_pages_text_coverage", {
-    documentId,
-    startPage: pages[0],
-    endPage: pages[pages.length - 1],
-  });
-  const missing = coverage
-    .filter((page) => page.text_status !== "ready" || page.char_count <= 0)
-    .map((page) => page.page_number);
-
-  if (missing.length && ocrPdfRef) {
-    const textPages: { pageNumber: number; text: string }[] = [];
-    const scanned: number[] = [];
-    await runPool(missing, 3, async (pageNumber) => {
-      if (cancelFlag) return;
-      set({ aiPhase: `waiting_for_text:${pageNumber}` });
-      try {
-        const result = await extractPageText(ocrPdfRef, pageNumber);
-        if (result.text.trim()) {
-          textPages.push({ pageNumber, text: result.text });
-        } else {
-          scanned.push(pageNumber);
-        }
-      } catch {
-        scanned.push(pageNumber);
-      }
-    });
-    if (textPages.length) {
-      await invoke("save_pages_text", { documentId, pages: textPages });
-    }
-    await runPool(scanned, 1, async (pageNumber) => {
-      if (cancelFlag) return;
-      set({ aiPhase: `ocr:${pageNumber}` });
-      await ocrPage(documentId, pageNumber).catch(() => "unavailable");
-    });
-  }
-
-  const finalCoverage = await invoke<PageTextCoverage[]>("get_pages_text_coverage", {
-    documentId,
-    startPage: pages[0],
-    endPage: pages[pages.length - 1],
-  });
-  const ready = finalCoverage.filter((page) => page.text_status === "ready" && page.char_count > 0).length;
-  return { ready, failed: pages.length - ready };
-}
-
-async function runPool<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const item = items[next++];
-      await worker(item);
-    }
-  }));
-}
 
 function flushStreamBuffer(set: any) {
   if (streamBuffer) {
@@ -241,27 +102,18 @@ export const useAiStore = create<AiState>((set, get) => ({
 
       // Wait for target page text/OCR before calling AI.
       const pages = pagesNeededForWorkflow(input);
-      if (pages.length === 1) {
-        const p = pages[0];
-        if (cancelFlag) return null;
-        set({ aiPhase: `waiting_for_text:${p}` });
-        const status = await waitForPageText(input.documentId, p, 30000, () =>
-          set({ aiPhase: `ocr:${p}` }),
-        );
-        if (status !== "ready") {
-          const reason = status === "empty"
-            ? `OCR finished but found no readable text on page ${p}.`
-            : `Could not extract text from page ${p}.`;
-          throw new Error(`${reason} Try a clearer scan or a smaller page range.`);
-        }
-      } else {
-        const status = await ensurePagesReadyForWorkflow(input.documentId, pages, set);
-        if (status.ready === 0) {
-          throw new Error("No readable text is available in this range. Try a clearer scan or a smaller page range.");
-        }
-        if (status.failed > 0) {
-          console.warn(`AI range query continuing with ${status.ready}/${pages.length} readable pages.`);
-        }
+      const status = await ensurePagesTextReady(input.documentId, pages, {
+        pdf: ocrPdfRef,
+        isCancelled: () => cancelFlag,
+        onPhase: (phase, pageNumber) => set({ aiPhase: `${phase}:${pageNumber}` }),
+      });
+      if (cancelFlag) return null;
+      if (status.ready === 0) {
+        const scope = pages.length === 1 ? `page ${pages[0]}` : "this range";
+        throw new Error(`No readable text is available on ${scope}. Try a clearer scan or a smaller page range.`);
+      }
+      if (status.failed > 0) {
+        console.warn(`AI query continuing with ${status.ready}/${pages.length} readable pages.`);
       }
 
       const result = await invoke<{

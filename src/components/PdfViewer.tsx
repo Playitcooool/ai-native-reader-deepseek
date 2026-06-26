@@ -7,7 +7,12 @@ import { useSettingsStore } from "../stores/settingsStore";
 import { useAiStore, setOcrPdfRef } from "../stores/aiStore";
 import { invoke } from "@tauri-apps/api/core";
 import { extractToc, type TocNodeInput } from "../features/toc/tocTree";
-import { PageExtractionQueue } from "../features/pdf/pdfTextExtraction";
+import {
+  PageExtractionQueue,
+  ensureDocumentTextReady,
+  extractPageText,
+  samplePagesForOpen,
+} from "../features/pdf/pdfTextExtraction";
 import SelectionMenu from "../features/pdf/SelectionMenu";
 import PageView from "../features/pdf/PageView";
 import { findPageIndexAtOffset, useVisibleRange } from "../features/pdf/useVisibleRange";
@@ -73,6 +78,7 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
   const [extractionDone, setExtractionDone] = useState(0);
   const extractionTotal = useRef(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchPhase, setSearchPhase] = useState("");
   const [loadProgress, setLoadProgress] = useState(0);
   const [indexedPageCount, setIndexedPageCount] = useState(0);
   const searchCancelledRef = useRef(false);
@@ -159,6 +165,7 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
   // Load PDF
   useEffect(() => {
     let destroyed = false;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
     const loadPdf = async () => {
       try {
         setLoadProgress(0);
@@ -198,8 +205,33 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
         );
         eq.onProgress = (done, total) => { setExtractionDone(done); extractionTotal.current = total; };
         extractionRef.current = eq;
-        eq.setCurrentPage(currentPage, pdf.numPages);
-        setTimeout(() => eq.enqueueAll(pdf.numPages), 2000);
+        const samplePages = samplePagesForOpen(currentPage, pdf.numPages);
+
+        const sampledText = await Promise.all(samplePages.map(async (pageNumber) => {
+          try {
+            const result = await extractPageText(pdf, pageNumber);
+            if (result.text.trim()) {
+              await invoke("save_pages_text", {
+                documentId,
+                pages: [{ pageNumber, text: result.text }],
+              });
+            }
+            return result.text.trim();
+          } catch {
+            return "";
+          }
+        }));
+
+        if (!destroyed && sampledText.length > 0 && sampledText.every((text) => !text)) {
+          idleTimer = setTimeout(() => {
+            ensureDocumentTextReady(documentId, pdf.numPages, {
+              pdf,
+              isCancelled: () => destroyed,
+            }).then(() =>
+              invoke<number>("count_indexed_pages", { documentId }).then(setIndexedPageCount).catch(() => {})
+            ).catch(() => {});
+          }, 1000);
+        }
       } catch (err) {
         if (!destroyed) setError(`Failed to load PDF: ${err}`);
       }
@@ -207,6 +239,7 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
     loadPdf();
     return () => {
       destroyed = true;
+      if (idleTimer) clearTimeout(idleTimer);
       extractionRef.current?.destroy();
       pdfRef.current?.destroy();
     };
@@ -216,7 +249,7 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
   // Update extraction priority when visible range changes
   useEffect(() => {
     if (extractionRef.current && pageCount > 0) {
-      extractionRef.current.setCurrentPage(currentPage, pageCount);
+      extractionRef.current.addPage(currentPage, 0);
     }
   }, [currentPage, pageCount]);
 
@@ -384,10 +417,21 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
   }, [zoom, heights]);
 
   const performSearch = useCallback(async (query: string) => {
-    if (!query.trim() || indexedPageCount === 0) { setSearchResults([]); return; }
+    if (!query.trim()) { setSearchResults([]); return; }
     searchCancelledRef.current = false;
     setIsSearching(true);
+    setSearchPhase("Preparing text");
     try {
+      if (pdfRef.current && pageCount > 0) {
+        await ensureDocumentTextReady(documentId, pageCount, {
+          pdf: pdfRef.current,
+          isCancelled: () => searchCancelledRef.current,
+          onPhase: (phase, pageNumber) => setSearchPhase(phase === "ocr" ? `OCR page ${pageNumber}` : `Preparing page ${pageNumber}`),
+        });
+        if (searchCancelledRef.current) return;
+        invoke<number>("count_indexed_pages", { documentId }).then(setIndexedPageCount).catch(() => {});
+      }
+      setSearchPhase("Searching");
       const results = await invoke<Array<{ pageNum: number; context: string }>>("search_pages_text", {
         documentId,
         query,
@@ -399,8 +443,9 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
       if (results.length > 0) setCurrentPage(results[0].pageNum);
     } finally {
       setIsSearching(false);
+      setSearchPhase("");
     }
-  }, [documentId, indexedPageCount, setCurrentPage]);
+  }, [documentId, pageCount, setCurrentPage]);
 
   // Cancel search on unmount
   useEffect(() => {
@@ -486,12 +531,14 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
             placeholder="Search in document…"
             autoFocus
           />
-          <button onClick={() => performSearch(searchQuery)} disabled={isSearching || !searchQuery.trim() || indexedPageCount === 0}
+          <button onClick={() => performSearch(searchQuery)} disabled={isSearching || !searchQuery.trim()}
             className="primary-action">
             {isSearching ? "Searching" : "Search"}
           </button>
           <span className="search-status">
-            {indexedPageCount === 0
+            {searchPhase
+              ? searchPhase
+              : indexedPageCount === 0
               ? "Waiting for index"
               : extractionDone < extractionTotal.current
                 ? `Indexed results (${indexedPageCount}/${pageCount})`
