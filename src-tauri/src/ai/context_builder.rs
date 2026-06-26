@@ -116,6 +116,38 @@ fn trim_text(text: &str, max_chars: usize) -> String {
     }
 }
 
+/// Format the full TOC tree as a compact indented index string.
+/// `label` is "p" for PDFs, "ch" for epubs — from `page_label()`.
+/// Returns empty string if no TOC nodes exist for this document.
+fn get_full_toc_index(conn: &Connection, document_id: &str, label: &str) -> String {
+    let mut lines = Vec::new();
+    if let Ok(mut stmt) = conn.prepare(
+        "SELECT title, level, start_page, end_page FROM toc_nodes
+         WHERE document_id = ?1
+         ORDER BY order_index",
+    ) {
+        if let Ok(rows) = stmt.query_map(rusqlite::params![document_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, Option<i64>>(3)?,
+            ))
+        }) {
+            for row in rows.flatten() {
+                let (title, level, start, end) = row;
+                let indent = "  ".repeat(level.max(0) as usize);
+                let page_range = match end {
+                    Some(e) if e != start => format!("{}.{}-{}", label, start, e),
+                    _ => format!("{}.{}", label, start),
+                };
+                lines.push(format!("{}{} ({})", indent, title, page_range));
+            }
+        }
+    }
+    lines.join("\n")
+}
+
 fn get_toc_breadcrumb(
     conn: &Connection,
     document_id: &str,
@@ -528,6 +560,142 @@ pub fn build_range_context(
     }
 }
 
+pub fn build_toc_index_context(
+    conn: &Connection,
+    document_id: &str,
+    _title: &str,
+    toc_node_id: &str,
+    session_id: Option<&str>,
+) -> ContextPack {
+    let mut hard_evidence = Vec::new();
+    let mut soft_memory = Vec::new();
+    let mut warnings = Vec::new();
+    let mut char_estimate: i64 = 0;
+
+    let doc_type = get_document_type(conn, document_id);
+    let label = page_label(&doc_type);
+
+    // 1. Full TOC index (priority 3, always included in every request)
+    let toc_index = get_full_toc_index(conn, document_id, label);
+    if !toc_index.is_empty() {
+        hard_evidence.push(ContextItem {
+            id: "full_toc_index".into(),
+            kind: "full_toc_index".into(),
+            priority: 3,
+            text: toc_index.clone(),
+            page_number: None,
+            toc_node_id: None,
+            is_hard_evidence: true,
+        });
+        char_estimate += toc_index.len() as i64;
+    }
+
+    // 2. Resolve target TOC node → section page range
+    let (section_title, section_start, section_end) = if !toc_node_id.is_empty() {
+        conn.query_row(
+            "SELECT title, start_page, COALESCE(end_page, start_page) FROM toc_nodes WHERE id = ?1",
+            rusqlite::params![toc_node_id],
+            |row| Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+            )),
+        ).unwrap_or_else(|_| (String::new(), 1, 1))
+    } else {
+        (String::new(), 1, 1)
+    };
+
+    // 3. Fetch section page texts (budget: MAX_CHARS_CLOUD minus what we've used)
+    if !section_title.is_empty() {
+        if let Ok(mut stmt) = conn.prepare(
+            "SELECT page_number, text FROM pages
+             WHERE document_id = ?1 AND page_number BETWEEN ?2 AND ?3 AND text_status = 'ready'
+             ORDER BY page_number",
+        ) {
+            if let Ok(rows) = stmt.query_map(rusqlite::params![document_id, section_start, section_end], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            }) {
+                for row in rows.flatten() {
+                    let (page, text) = row;
+                    let entry = format!("[{}.{}]\n{}", label, page, text);
+                    if char_estimate + (entry.len() as i64) <= MAX_CHARS_CLOUD {
+                        char_estimate += entry.len() as i64;
+                        hard_evidence.push(ContextItem {
+                            id: format!("section_page_{}", page),
+                            kind: "range_text".into(),
+                            priority: 2,
+                            text: entry,
+                            page_number: Some(page),
+                            toc_node_id: Some(toc_node_id.to_string()),
+                            is_hard_evidence: true,
+                        });
+                    } else {
+                        warnings.push(format!(
+                            "Section too large: included {} of {} pages (budget: {} chars).",
+                            hard_evidence.len(),
+                            section_end - section_start + 1,
+                            MAX_CHARS_CLOUD
+                        ));
+                        break;
+                    }
+                }
+            }
+        } else {
+            warnings.push(format!("Section {} has no extracted pages yet.", toc_node_id));
+        }
+
+        // Section context breadcrumb
+        hard_evidence.push(ContextItem {
+            id: "section_context".into(),
+            kind: "toc_breadcrumb".into(),
+            priority: 5,
+            text: format!("Target section: {} ({}.{}-{})", section_title, label, section_start, section_end),
+            page_number: None,
+            toc_node_id: Some(toc_node_id.to_string()),
+            is_hard_evidence: true,
+        });
+    }
+
+    // 4. Soft memory: recent turns + summary
+    if let Some(sid) = session_id {
+        for t in get_recent_turns(conn, sid, 3) {
+            if char_estimate + (t.text.len() as i64) < MAX_CHARS_CLOUD {
+                char_estimate += t.text.len() as i64;
+                soft_memory.push(t);
+            }
+        }
+
+        if let Some(summary) = get_session_summary(conn, sid) {
+            let summary_text = format!("Previous session summary:\n{}", summary);
+            if char_estimate + (summary_text.len() as i64) < MAX_CHARS_CLOUD {
+                char_estimate += summary_text.len() as i64;
+                soft_memory.push(ContextItem {
+                    id: "session_summary".into(),
+                    kind: "session_summary".into(),
+                    priority: 7,
+                    text: summary_text,
+                    page_number: None,
+                    toc_node_id: None,
+                    is_hard_evidence: false,
+                });
+            }
+        }
+    }
+
+    ContextPack {
+        document_id: document_id.to_string(),
+        session_id: session_id.map(|s| s.to_string()),
+        mode: "toc_index_qa".into(),
+        scope_type: "toc_index".into(),
+        hard_evidence,
+        soft_memory,
+        citation_targets: vec![],
+        token_estimate: estimate_tokens(char_estimate),
+        char_estimate,
+        warnings,
+    }
+}
+
 pub fn build_context_pack_for_mode(
     conn: &Connection,
     document_id: &str,
@@ -538,6 +706,7 @@ pub fn build_context_pack_for_mode(
     start_page: Option<i64>,
     end_page: Option<i64>,
     session_id: Option<&str>,
+    toc_node_id: Option<&str>,
 ) -> ContextPack {
     match mode {
         "selection_explain" => {
@@ -556,6 +725,10 @@ pub fn build_context_pack_for_mode(
             let s = start_page.unwrap_or(page_number);
             let e = end_page.unwrap_or(page_number);
             build_range_context(conn, document_id, title, s, e)
+        }
+        "toc_index_qa" => {
+            let nid = toc_node_id.unwrap_or("");
+            build_toc_index_context(conn, document_id, title, nid, session_id)
         }
         _ => {
             build_page_context(conn, document_id, title, page_number, session_id)

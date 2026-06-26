@@ -1,5 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { documentDisplayTitle, useDocumentStore } from "../stores/documentStore";
+import type { TocNode } from "../features/toc/TocSidebar";
 import { type AiMessage, useAiStore } from "../stores/aiStore";
 import { useUndoStore } from "../stores/undoStore";
 import ReactMarkdown from "react-markdown";
@@ -35,7 +36,7 @@ interface AiSidebarProps {
 }
 
 export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProps) {
-  const { currentDocument, currentPage, setCurrentPage } = useDocumentStore();
+  const { currentDocument, currentPage, setCurrentPage, tocNodes } = useDocumentStore();
   const { messages, isGenerating, aiPhase, streamingContent, runWorkflow, cancelWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
   const pushUndo = useUndoStore((s) => s.pushUndo);
   const [input, setInput] = useState("");
@@ -44,6 +45,8 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
   const listRef = useRef<HTMLDivElement>(null);
   const [savedNotes, setSavedNotes] = useState<Set<string>>(new Set());
   const [showRange, setShowRange] = useState(false);
+  const [showIndex, setShowIndex] = useState(false);
+  const [selectedIndexNode, setSelectedIndexNode] = useState<TocNode | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -117,22 +120,52 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
     }
   }, [currentDocument, currentPage, rangeStart, rangeEnd, runWorkflow, addToast]);
 
+  const handleIndexNodeClick = useCallback((node: TocNode) => {
+    if (!currentDocument || isGenerating) return;
+    setSelectedIndexNode(node);
+    const endPage = node.end_page ?? node.start_page;
+    runWorkflow({
+      documentId: currentDocument.id,
+      documentTitle: documentDisplayTitle(currentDocument),
+      mode: "toc_index_qa",
+      pageNumber: node.start_page,
+      startPage: node.start_page,
+      endPage,
+      tocNodeId: node.id,
+      question: "Summarize this section",
+    }).catch((err) => addToast({ type: "error", message: `Index query failed: ${err}` }));
+  }, [currentDocument, isGenerating, runWorkflow, addToast]);
+
   const handleAskQuestion = useCallback(async () => {
     if (!currentDocument || !input.trim()) return;
     const question = input.trim();
     setInput("");
     try {
-      await runWorkflow({
-        documentId: currentDocument.id,
-        documentTitle: documentDisplayTitle(currentDocument),
-        mode: "chapter_qa",
-        pageNumber: currentPage,
-        question,
-      });
+      if (showIndex && selectedIndexNode) {
+        const endPage = selectedIndexNode.end_page ?? selectedIndexNode.start_page;
+        await runWorkflow({
+          documentId: currentDocument.id,
+          documentTitle: documentDisplayTitle(currentDocument),
+          mode: "toc_index_qa",
+          pageNumber: selectedIndexNode.start_page,
+          startPage: selectedIndexNode.start_page,
+          endPage,
+          tocNodeId: selectedIndexNode.id,
+          question,
+        });
+      } else {
+        await runWorkflow({
+          documentId: currentDocument.id,
+          documentTitle: documentDisplayTitle(currentDocument),
+          mode: "chapter_qa",
+          pageNumber: currentPage,
+          question,
+        });
+      }
     } catch (err) {
       addToast({ type: "error", message: `AI request failed: ${err}` });
     }
-  }, [currentDocument, currentPage, input, runWorkflow, addToast]);
+  }, [currentDocument, currentPage, input, showIndex, selectedIndexNode, runWorkflow, addToast]);
 
   const handleSaveAsNote = useCallback(
     async (msg: AiMessage) => {
@@ -262,6 +295,10 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
           style={showRange ? primaryButton() : { ...ghostButton, background: "var(--bg-tertiary)", border: "none" }}>
           Range
         </button>
+        <button onClick={() => { setShowIndex(!showIndex); setSelectedIndexNode(null); }}
+          style={showIndex ? primaryButton() : { ...ghostButton, background: "var(--bg-tertiary)", border: "none" }}>
+          Index
+        </button>
         <button onMouseDown={(e) => e.preventDefault()} onClick={handleExplain}
           disabled={isGenerating}
           style={primaryButton("var(--success-color)")}>
@@ -287,6 +324,50 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
             style={primaryButton()}>
             Go
           </button>
+        </div>
+      )}
+
+      {showIndex && (
+        <div className="ai-index-list" style={{ padding: "4px 0", borderBottom: line, marginBottom: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 4px 8px" }}>
+            Book Index
+          </div>
+          <div style={{ maxHeight: 160, overflow: "auto", display: "flex", flexDirection: "column" }}>
+            {tocNodes.length === 0 ? (
+              <p style={{ color: "var(--text-muted)", fontSize: 12, padding: "0 8px" }}>
+                No table of contents available for this document.
+              </p>
+            ) : (
+              tocNodes.map((node) => (
+                <button
+                  key={node.id}
+                  onClick={() => handleIndexNodeClick(node)}
+                  disabled={isGenerating}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "2px 8px",
+                    paddingLeft: 8 + (node.level || 0) * 14,
+                    border: "none",
+                    background: selectedIndexNode?.id === node.id ? "var(--accent-color)" : "transparent",
+                    color: selectedIndexNode?.id === node.id ? "#fff" : "var(--text-primary)",
+                    borderRadius: 2,
+                    fontSize: 12,
+                    cursor: isGenerating ? "default" : "pointer",
+                    lineHeight: 1.5,
+                    opacity: isGenerating ? 0.5 : 1,
+                  }}
+                  title={`${node.title} (p.${node.start_page}${node.end_page ? `–${node.end_page}` : ""})`}
+                >
+                  {node.title}
+                  <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4 }}>
+                    {node.start_page}{node.end_page && node.end_page !== node.start_page ? `–${node.end_page}` : ""}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
 
@@ -357,6 +438,22 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
         )}
       </div>
 
+      {showIndex && selectedIndexNode && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 4,
+          padding: "3px 8px", margin: "0 8px",
+          background: "var(--accent-color)",
+          color: "#fff", borderRadius: 4, fontSize: 11, fontWeight: 500,
+        }}>
+          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {selectedIndexNode.title} (p.{selectedIndexNode.start_page}{selectedIndexNode.end_page && selectedIndexNode.end_page !== selectedIndexNode.start_page ? `–${selectedIndexNode.end_page}` : ""})
+          </span>
+          <button onClick={() => setSelectedIndexNode(null)}
+            style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 0, fontSize: 14, lineHeight: 1 }}>
+            ×
+          </button>
+        </div>
+      )}
       <div className="ai-composer">
         <textarea
           value={input}
@@ -372,7 +469,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
             el.style.height = "auto";
             el.style.height = el.scrollHeight + "px";
           }}
-          placeholder="Ask about this page…"
+          placeholder={showIndex && selectedIndexNode ? `Ask about ${selectedIndexNode.title}…` : "Ask about this page…"}
           disabled={isGenerating}
           rows={1}
           style={{

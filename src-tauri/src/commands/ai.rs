@@ -513,6 +513,8 @@ pub struct RunAiWorkflowInput {
     pub question: Option<String>,
     /// If provided, reuse/save to this session; if empty, a new session is created.
     pub existing_session_id: Option<String>,
+    /// Optional TOC node ID for toc_index_qa mode.
+    pub toc_node_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -558,6 +560,7 @@ pub async fn run_ai_workflow(
             input.start_page,
             input.end_page,
             Some(&session_id),
+            input.toc_node_id.as_deref(),
         );
 
         // Read provider settings
@@ -656,6 +659,14 @@ pub async fn run_ai_workflow(
         "chapter_qa" => {
             let q = input.question.as_deref().unwrap_or("");
             crate::ai::prompts::ask_current_section(title, input.page_number, toc_path, section_start, section_end, q, &evidence_text)
+        }
+        "toc_index_qa" => {
+            let toc_index = context_pack.hard_evidence.iter()
+                .find(|item| item.kind == "full_toc_index")
+                .map(|item| item.text.as_str())
+                .unwrap_or("");
+            let q = input.question.as_deref().unwrap_or("Summarize this section");
+            crate::ai::prompts::toc_index_qa(title, toc_index, q, &evidence_text)
         }
         _ => return Err(format!("Unknown mode: {}", input.mode)),
     };

@@ -35,6 +35,7 @@ interface AiState {
     startPage?: number;
     endPage?: number;
     question?: string;
+    tocNodeId?: string;
   }) => Promise<string | null>;
   cancelWorkflow: () => void;
   retryLastWorkflow: () => Promise<string | null>;
@@ -209,6 +210,7 @@ export const useAiStore = create<AiState>((set, get) => ({
           end_page: input.endPage ?? null,
           question: input.question ?? null,
           existing_session_id: get().sessionId,
+          toc_node_id: input.tocNodeId ?? null,
         },
       });
 

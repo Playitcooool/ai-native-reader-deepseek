@@ -111,7 +111,36 @@ pub fn ask_current_section(
     (system_message().to_string(), user)
 }
 
-/// Prompt for translating selected text to Chinese.
+/// Prompt for the TOC-index experiment: AI has full book index + section content.
+pub fn toc_index_qa(
+    title: &str,
+    toc_index: &str,
+    question: &str,
+    evidence: &str,
+) -> (String, String) {
+    let system = if toc_index.is_empty() {
+        system_message().to_string()
+    } else {
+        format!(
+            "{} You have access to the full book index below. \
+             Use it to orient yourself within the document.\n\n\
+             Full book index:\n{}",
+            system_message(),
+            toc_index
+        )
+    };
+
+    let user = format!(
+        "Document: {}\n\n\
+         Question:\n{}\n\n\
+         Page content:\n{}\n\n\
+         Please summarize the relevant content and answer the user's question. \
+         Use [p.X] references for page numbers.",
+        title, question, evidence
+    );
+
+    (system, user)
+}
 pub fn translate(selected_text: &str) -> (String, String) {
     let system = "You are a translator. Translate the given text to Chinese. \
                   Preserve original formatting. Return only the translation, no explanations.";
