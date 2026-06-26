@@ -111,6 +111,30 @@ pub fn ask_current_section(
     (system_message().to_string(), user)
 }
 
+pub fn ask_page_range(
+    title: &str,
+    start_page: i64,
+    end_page: i64,
+    question: &str,
+    evidence: &str,
+) -> (String, String) {
+    let user = format!(
+        "Task: Answer the user's question using the requested page range.\n\n\
+         Document: {}\n\
+         Requested page range: {}–{}\n\n\
+         Question:\n\
+         {}\n\n\
+         Evidence:\n\
+         {}\n\n\
+         Rules:\n\
+         - Use only the provided evidence.\n\
+         - If evidence is insufficient, say so.\n\
+         - Cite pages using [p.X].",
+        title, start_page, end_page, question, evidence
+    );
+    (system_message().to_string(), user)
+}
+
 /// Prompt for the TOC-index experiment: AI has full book index + section content.
 pub fn toc_index_qa(
     title: &str,

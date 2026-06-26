@@ -126,10 +126,10 @@ export async function ensurePagesTextReady(
   documentId: string,
   pages: number[],
   options: TextReadinessOptions = {},
-): Promise<{ ready: number; failed: number }> {
+): Promise<{ ready: number; failed: number; readyPages: number[]; failedPages: number[] }> {
   const invokeFn = options.invoke ?? tauriInvoke;
   const requestedPages = Array.from(new Set(pages.filter((page) => page >= 1))).sort((a, b) => a - b);
-  if (requestedPages.length === 0) return { ready: 0, failed: 0 };
+  if (requestedPages.length === 0) return { ready: 0, failed: 0, readyPages: [], failedPages: [] };
 
   for (const pageNumber of requestedPages) {
     if (options.isCancelled?.()) break;
@@ -169,17 +169,19 @@ export async function ensurePagesTextReady(
     endPage: requestedPages[requestedPages.length - 1],
   });
   const requested = new Set(requestedPages);
-  const ready = coverage.filter((page) =>
+  const readyPages = coverage.filter((page) =>
     requested.has(page.page_number) && page.text_status === "ready" && page.char_count > 0
-  ).length;
-  return { ready, failed: requestedPages.length - ready };
+  ).map((page) => page.page_number);
+  const readySet = new Set(readyPages);
+  const failedPages = requestedPages.filter((page) => !readySet.has(page));
+  return { ready: readyPages.length, failed: failedPages.length, readyPages, failedPages };
 }
 
 export function ensureDocumentTextReady(
   documentId: string,
   pageCount: number,
   options: TextReadinessOptions = {},
-): Promise<{ ready: number; failed: number }> {
+): Promise<{ ready: number; failed: number; readyPages: number[]; failedPages: number[] }> {
   return ensurePagesTextReady(
     documentId,
     Array.from({ length: Math.max(0, pageCount) }, (_, i) => i + 1),

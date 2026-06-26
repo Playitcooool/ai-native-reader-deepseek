@@ -18,10 +18,10 @@ export function inferAskScope(question: string, currentPage: number, tocNodes: T
 }
 
 function parseExplicitPageRange(question: string): AskScope | null {
-  const match = question.match(/\b(?:p(?:age)?s?\.?\s*)?(\d{1,5})\s*(?:-|–|—|to|through|and)\s*(\d{1,5})\b/i);
-  if (!match || !/\b(?:p(?:age)?s?\.?)\b/i.test(question)) return null;
+  const match = question.match(/\b(?:pages?|p\.)\s*(\d{1,5})(?:\s*(?:-|–|—|to|through|and)\s*(\d{1,5}))?\b/i);
+  if (!match) return null;
   const a = Number(match[1]);
-  const b = Number(match[2]);
+  const b = Number(match[2] ?? match[1]);
   return { kind: "range", startPage: Math.min(a, b), endPage: Math.max(a, b) };
 }
 

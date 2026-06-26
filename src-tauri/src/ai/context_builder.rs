@@ -751,10 +751,10 @@ pub fn build_context_pack_for_mode(
         "page_summary" => {
             build_page_context(conn, document_id, title, page_number, session_id)
         }
-        "range_summary" => {
+        "range_summary" | "range_qa" => {
             let s = start_page.unwrap_or(page_number);
             let e = end_page.unwrap_or(page_number);
-            build_range_context(conn, document_id, title, s, e, "range_summary", None, None)
+            build_range_context(conn, document_id, title, s, e, mode, session_id, None)
         }
         "chapter_qa" => {
             let s = start_page.unwrap_or(page_number);
@@ -768,5 +768,52 @@ pub fn build_context_pack_for_mode(
         _ => {
             build_page_context(conn, document_id, title, page_number, session_id)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_context_pack_for_mode;
+
+    #[test]
+    fn range_qa_builds_evidence_for_ready_pages() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE pages (
+                document_id TEXT,
+                page_number INTEGER,
+                text TEXT,
+                text_status TEXT,
+                char_count INTEGER
+            )",
+            [],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO pages (document_id, page_number, text, text_status, char_count)
+             VALUES ('doc', 20, 'twenty', 'ready', 6), ('doc', 21, 'twenty one', 'ready', 10)",
+            [],
+        ).unwrap();
+
+        let pack = build_context_pack_for_mode(
+            &conn,
+            "doc",
+            "Doc",
+            "range_qa",
+            20,
+            None,
+            Some(20),
+            Some(21),
+            None,
+            None,
+        );
+
+        let pages: Vec<i64> = pack
+            .hard_evidence
+            .iter()
+            .filter(|item| item.kind == "range_text")
+            .filter_map(|item| item.page_number)
+            .collect();
+        assert_eq!(pages, vec![20, 21]);
+        assert_eq!(pack.mode, "range_qa");
     }
 }

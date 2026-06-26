@@ -4,7 +4,7 @@ export function pagesNeededForWorkflow(input: {
   startPage?: number;
   endPage?: number;
 }): number[] {
-  if ((input.mode !== "range_summary" && input.mode !== "chapter_qa") || !input.startPage || !input.endPage) {
+  if ((input.mode !== "range_summary" && input.mode !== "chapter_qa" && input.mode !== "range_qa") || !input.startPage || !input.endPage) {
     return [input.pageNumber];
   }
   const start = Math.min(input.startPage, input.endPage);

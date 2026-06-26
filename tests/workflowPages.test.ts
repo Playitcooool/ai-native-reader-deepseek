@@ -26,6 +26,15 @@ describe("pagesNeededForWorkflow", () => {
       endPage: 5,
     })).toEqual([3, 4, 5]);
   });
+
+  it("waits for every page in explicit range questions", () => {
+    expect(pagesNeededForWorkflow({
+      mode: "range_qa",
+      pageNumber: 20,
+      startPage: 20,
+      endPage: 21,
+    })).toEqual([20, 21]);
+  });
 });
 
 describe("samplePagesForOpen", () => {
@@ -63,6 +72,33 @@ describe("inferAskScope", () => {
       startPage: 20,
       endPage: 21,
     });
+    expect(inferAskScope("what does page 20 -21 say?", 4, [tocNode])).toEqual({
+      kind: "range",
+      startPage: 20,
+      endPage: 21,
+    });
+    expect(inferAskScope("compare pages 20 and 21", 4, [tocNode])).toEqual({
+      kind: "range",
+      startPage: 20,
+      endPage: 21,
+    });
+  });
+
+  it("uses explicit single pages in questions", () => {
+    expect(inferAskScope("what does page 21 say?", 4, [tocNode])).toEqual({
+      kind: "range",
+      startPage: 21,
+      endPage: 21,
+    });
+    expect(inferAskScope("what does p. 20 say?", 4, [tocNode])).toEqual({
+      kind: "range",
+      startPage: 20,
+      endPage: 20,
+    });
+  });
+
+  it("does not treat dates as page ranges", () => {
+    expect(inferAskScope("what changed in 2020-2021?", 4, [tocNode])).toEqual({ kind: "page" });
   });
 
   it("uses the active section for chapter questions", () => {

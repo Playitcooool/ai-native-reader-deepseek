@@ -127,13 +127,16 @@ export default function AiSidebar({
     setInput("");
     try {
       const scope = inferAskScope(question, currentPage, tocNodes);
-      const maxPage = currentDocument.page_count ?? 9999;
-      const startPage = scope.kind === "page" ? undefined : Math.max(1, Math.min(scope.startPage, maxPage));
-      const endPage = scope.kind === "page" ? undefined : Math.max(1, Math.min(scope.endPage, maxPage));
+      const maxPage = currentDocument.page_count ?? 0;
+      if (scope.kind === "range" && maxPage > 0 && (scope.startPage < 1 || scope.endPage > maxPage)) {
+        throw new Error(`Requested pages ${scope.startPage}–${scope.endPage}, but this document has ${maxPage} pages.`);
+      }
+      const startPage = scope.kind === "page" ? undefined : scope.startPage;
+      const endPage = scope.kind === "page" ? undefined : scope.endPage;
       await runWorkflow({
         documentId: currentDocument.id,
         documentTitle: documentDisplayTitle(currentDocument),
-        mode: "chapter_qa",
+        mode: scope.kind === "range" ? "range_qa" : "chapter_qa",
         pageNumber: startPage ?? currentPage,
         startPage,
         endPage,

@@ -113,7 +113,7 @@ export const useAiStore = create<AiState>((set, get) => ({
         throw new Error(`No readable text is available on ${scope}. Try a clearer scan or a smaller page range.`);
       }
       if (status.failed > 0) {
-        console.warn(`AI query continuing with ${status.ready}/${pages.length} readable pages.`);
+        throw new Error(`No readable text is available on page${status.failedPages.length === 1 ? "" : "s"} ${status.failedPages.join(", ")}. Try a clearer scan or a smaller page range.`);
       }
 
       const result = await invoke<{
@@ -147,6 +147,7 @@ export const useAiStore = create<AiState>((set, get) => ({
       const userContent = input.selectedText ?? input.question ??
         (input.mode === "page_summary" ? `Summarize page ${input.pageNumber}` :
          input.mode === "range_summary" && input.startPage && input.endPage ? `Summarize pages ${input.startPage}–${input.endPage}` :
+         input.mode === "range_qa" && input.question ? input.question :
          input.mode);
       const userMsg: AiMessage = {
         id: `user_${Date.now()}`,

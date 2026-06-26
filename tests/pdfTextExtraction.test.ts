@@ -62,7 +62,7 @@ describe("ensurePagesTextReady", () => {
       ocrPage,
     });
 
-    expect(result).toEqual({ ready: 1, failed: 0 });
+    expect(result).toEqual({ ready: 1, failed: 0, readyPages: [2], failedPages: [] });
     expect(ocrPage).not.toHaveBeenCalled();
     expect(invoke).toHaveBeenCalledWith("save_pages_text", {
       documentId: "doc",
@@ -83,7 +83,7 @@ describe("ensurePagesTextReady", () => {
       ocrPage,
     });
 
-    expect(result).toEqual({ ready: 1, failed: 0 });
+    expect(result).toEqual({ ready: 1, failed: 0, readyPages: [3], failedPages: [] });
     expect(ocrPage).toHaveBeenCalledOnce();
   });
 
@@ -104,6 +104,19 @@ describe("ensurePagesTextReady", () => {
     await ensurePagesTextReady("doc", [2, 3, 4], { pdf, invoke: invoke as any });
 
     expect(pdf.getPage.mock.calls.map(([page]: [number]) => page)).toEqual([2, 3, 4]);
+  });
+
+  it("reports exact failed pages", async () => {
+    const { invoke } = mockInvoke();
+    const pdf = fakePdf({ 20: "twenty", 21: "" });
+
+    const result = await ensurePagesTextReady("doc", [20, 21], {
+      pdf,
+      invoke: invoke as any,
+      ocrPage: vi.fn(async () => "empty" as const),
+    });
+
+    expect(result).toEqual({ ready: 1, failed: 1, readyPages: [20], failedPages: [21] });
   });
 
   it("document search readiness requests all pages", async () => {
