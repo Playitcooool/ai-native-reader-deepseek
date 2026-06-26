@@ -498,10 +498,24 @@ pub fn build_range_context(
     _title: &str,
     start_page: i64,
     end_page: i64,
+    mode: &str,
+    session_id: Option<&str>,
+    toc_node_id: Option<&str>,
 ) -> ContextPack {
     let mut hard_evidence = Vec::new();
+    let mut soft_memory = Vec::new();
     let mut warnings = Vec::new();
     let mut char_estimate: i64 = 0;
+    let doc_type = get_document_type(conn, document_id);
+    let label = page_label(&doc_type);
+    let toc_node_id = toc_node_id.filter(|id| !id.is_empty());
+    let section_title = toc_node_id.and_then(|id| {
+        conn.query_row(
+            "SELECT title FROM toc_nodes WHERE id = ?1",
+            rusqlite::params![id],
+            |row| row.get::<_, String>(0),
+        ).ok()
+    });
 
     let mut page_texts: Vec<(i64, String)> = Vec::new();
     if let Ok(mut stmt) = conn.prepare(
@@ -527,7 +541,7 @@ pub fn build_range_context(
                 priority: 1,
                 text: entry.clone(),
                 page_number: Some(*page),
-                toc_node_id: None,
+                toc_node_id: toc_node_id.map(|id| id.to_string()),
                 is_hard_evidence: true,
             });
             char_estimate += entry.len() as i64;
@@ -546,13 +560,34 @@ pub fn build_range_context(
         warnings.push("No page text available for this range. Extraction may still be in progress.".into());
     }
 
+    if let Some(title) = section_title {
+        hard_evidence.push(ContextItem {
+            id: "section_context".into(),
+            kind: "toc_breadcrumb".into(),
+            priority: 3,
+            text: format!("Section: {} ({}.{}-{})", title, label, start_page, end_page),
+            page_number: None,
+            toc_node_id: toc_node_id.map(|id| id.to_string()),
+            is_hard_evidence: true,
+        });
+    }
+
+    if let Some(sid) = session_id {
+        for t in get_recent_turns(conn, sid, 3) {
+            if char_estimate + (t.text.len() as i64) < MAX_CHARS_CLOUD {
+                char_estimate += t.text.len() as i64;
+                soft_memory.push(t);
+            }
+        }
+    }
+
     ContextPack {
         document_id: document_id.to_string(),
-        session_id: None,
-        mode: "range_summary".into(),
-        scope_type: "range".into(),
+        session_id: session_id.map(|s| s.to_string()),
+        mode: mode.into(),
+        scope_type: if toc_node_id.is_some() { "section".into() } else { "range".into() },
         hard_evidence,
-        soft_memory: vec![],
+        soft_memory,
         citation_targets: vec![],
         token_estimate: estimate_tokens(char_estimate),
         char_estimate,
@@ -719,12 +754,12 @@ pub fn build_context_pack_for_mode(
         "range_summary" => {
             let s = start_page.unwrap_or(page_number);
             let e = end_page.unwrap_or(page_number);
-            build_range_context(conn, document_id, title, s, e)
+            build_range_context(conn, document_id, title, s, e, "range_summary", None, None)
         }
         "chapter_qa" => {
             let s = start_page.unwrap_or(page_number);
             let e = end_page.unwrap_or(page_number);
-            build_range_context(conn, document_id, title, s, e)
+            build_range_context(conn, document_id, title, s, e, "chapter_qa", session_id, toc_node_id)
         }
         "toc_index_qa" => {
             let nid = toc_node_id.unwrap_or("");

@@ -1,31 +1,10 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "../pdfjs";
 import { documentDisplayTitle, type Document, useDocumentStore } from "../stores/documentStore";
 import PdfViewer from "./PdfViewer";
 const EpubViewer = lazy(() => import("../features/epub/EpubViewer"));
 import { useToast } from "./Toast";
-import type { TocNode } from "../features/toc/TocSidebar";
-import type { AiMessage } from "../stores/aiStore";
-import type { InitialIndexAction } from "./AiSidebar";
-
-interface AiSession {
-  id: string;
-  session_summary: string | null;
-}
-
-interface PageTextCoverage {
-  page_number: number;
-  text_status: string;
-  char_count: number;
-}
-
-interface IndexContext {
-  node: TocNode | null;
-  session: AiSession | null;
-  messages: AiMessage[];
-  coverage: PageTextCoverage[];
-}
 
 function formatTime(totalSeconds: number): string {
   if (totalSeconds < 60) return `${totalSeconds}s`;
@@ -64,82 +43,17 @@ export default function CenterViewer({
   onBackHome,
   onOpenLibrary,
   onOpenAi,
-  onOpenIndexGuide,
 }: {
   onBackHome?: () => void;
   onOpenLibrary?: () => void;
   onOpenAi?: (draft?: string) => void;
-  onOpenIndexGuide?: (action: InitialIndexAction) => void;
 }) {
-  const { documents, currentDocument, handleOpenDocument, handleOpenFolder, setCurrentDocument, setCurrentPage, dailyStats, loadReadingStats } = useDocumentStore();
+  const { documents, currentDocument, handleOpenDocument, handleOpenFolder, setCurrentDocument, dailyStats, loadReadingStats } = useDocumentStore();
   const { addToast } = useToast();
-  const pdfs = useMemo(() => documents.filter((doc) => doc.document_type === "pdf"), [documents]);
-  const latestPdf = useMemo(() => latestDocument(pdfs), [pdfs]);
-  const [selectedIndexId, setSelectedIndexId] = useState<string | null>(null);
-  const selectedIndexDoc = useMemo(
-    () => pdfs.find((doc) => doc.id === (selectedIndexId ?? latestPdf?.id)) ?? latestPdf ?? null,
-    [pdfs, selectedIndexId, latestPdf],
-  );
-  const [indexContext, setIndexContext] = useState<IndexContext | null>(null);
-  const [indexLoading, setIndexLoading] = useState(false);
 
   useEffect(() => {
     loadReadingStats();
   }, [loadReadingStats]);
-
-  useEffect(() => {
-    if (selectedIndexId || !latestPdf) return;
-    setSelectedIndexId(latestPdf.id);
-  }, [latestPdf, selectedIndexId]);
-
-  useEffect(() => {
-    if (!selectedIndexDoc) {
-      setIndexContext(null);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      setIndexLoading(true);
-      try {
-        const page = selectedIndexDoc.last_page ?? 1;
-        const node = await invoke<TocNode | null>("get_toc_node_for_page", {
-          documentId: selectedIndexDoc.id,
-          pageNumber: page,
-        }).catch(() => null);
-        const start = node?.start_page ?? page;
-        const end = node?.end_page ?? start;
-        const [session, coverage] = await Promise.all([
-          invoke<AiSession>("get_or_create_ai_session", {
-            input: {
-              document_id: selectedIndexDoc.id,
-              scope_type: "toc_index_qa",
-              scope_json: "{\"scopeType\":\"toc_index_qa\"}",
-            },
-          }).catch(() => null),
-          invoke<PageTextCoverage[]>("get_pages_text_coverage", {
-            documentId: selectedIndexDoc.id,
-            startPage: start,
-            endPage: end,
-          }).catch(() => []),
-        ]);
-        const messages = session
-          ? await invoke<AiMessage[]>("get_session_messages", { sessionId: session.id, limit: 6 }).catch(() => [])
-          : [];
-        if (!cancelled) setIndexContext({ node, session, messages, coverage });
-      } finally {
-        if (!cancelled) setIndexLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [selectedIndexDoc]);
-
-  const openIndexDocument = (doc: Document, action?: Omit<InitialIndexAction, "pageNumber">) => {
-    const pageNumber = doc.last_page ?? 1;
-    setCurrentPage(pageNumber);
-    setCurrentDocument(doc);
-    if (action) onOpenIndexGuide?.({ ...action, pageNumber });
-  };
 
   if (currentDocument) {
     return (
@@ -195,54 +109,6 @@ export default function CenterViewer({
           <span>Week: {formatTime(dailyStats.weekSeconds)}</span>
         </div>
       )}
-
-      <div className="index-reading">
-        <div className="index-reading-main">
-          <div className="index-reading-head">
-            <div>
-              <p className="library-eyebrow">Index Reading</p>
-              <h2>Continue Reading</h2>
-            </div>
-            {pdfs.length > 1 && (
-              <select
-                value={selectedIndexDoc?.id ?? ""}
-                onChange={(e) => setSelectedIndexId(e.target.value)}
-                aria-label="Pick PDF for Index Reading"
-              >
-                {pdfs.map((doc) => (
-                  <option key={doc.id} value={doc.id}>{documentDisplayTitle(doc)}</option>
-                ))}
-              </select>
-            )}
-          </div>
-          {!selectedIndexDoc ? (
-            <p className="index-muted">Add a PDF to use Index Reading.</p>
-          ) : (
-            <IndexReadingCard
-              doc={selectedIndexDoc}
-              context={indexContext}
-              loading={indexLoading}
-              onContinue={() => openIndexDocument(selectedIndexDoc)}
-              onSummarize={() => openIndexDocument(selectedIndexDoc, {
-                node: indexContext?.node ?? null,
-                summarize: true,
-                sessionId: indexContext?.session?.id,
-              })}
-              onAsk={() => openIndexDocument(selectedIndexDoc, {
-                node: indexContext?.node ?? null,
-                sessionId: indexContext?.session?.id,
-              })}
-            />
-          )}
-        </div>
-        {latestPdf && selectedIndexDoc?.id !== latestPdf.id && (
-          <button className="continue-card" onClick={() => setSelectedIndexId(latestPdf.id)}>
-            <span>Most recent</span>
-            <strong>{documentDisplayTitle(latestPdf)}</strong>
-            <small>Page {latestPdf.last_page ?? 1}</small>
-          </button>
-        )}
-      </div>
 
       <div className="book-grid">
         {documents.length === 0 ? (
@@ -321,55 +187,4 @@ async function renderCover(documentId: string, docType: string): Promise<string 
 
   if (docType === 'pdf') return null;
   return null;
-}
-
-function latestDocument(docs: Document[]) {
-  return [...docs].sort(
-    (a, b) =>
-      new Date(b.last_opened_at ?? b.updated_at ?? b.created_at).getTime() -
-      new Date(a.last_opened_at ?? a.updated_at ?? a.created_at).getTime(),
-  )[0] ?? null;
-}
-
-function IndexReadingCard({
-  doc,
-  context,
-  loading,
-  onContinue,
-  onSummarize,
-  onAsk,
-}: {
-  doc: Document;
-  context: IndexContext | null;
-  loading: boolean;
-  onContinue: () => void;
-  onSummarize: () => void;
-  onAsk: () => void;
-}) {
-  const ready = context?.coverage.filter((page) => page.text_status === "ready" && page.char_count > 0).length ?? 0;
-  const total = context?.coverage.length ?? 0;
-  const chars = context?.coverage.reduce((sum, page) => sum + page.char_count, 0) ?? 0;
-  const lastAssistant = [...(context?.messages ?? [])].reverse().find((msg) => msg.role === "assistant");
-  return (
-    <div className="index-card">
-      <div>
-        <h3>{documentDisplayTitle(doc)}</h3>
-        <p className="index-muted">
-          Page {doc.last_page ?? 1}
-          {context?.node ? ` · ${context.node.title}` : " · No TOC section"}
-        </p>
-      </div>
-      <div className="index-facts">
-        <span>{loading ? "Loading context" : total ? `${ready}/${total} pages ready` : "No saved text yet"}</span>
-        <span>{chars ? `${chars.toLocaleString()} chars indexed` : "OCR will run as pages are opened"}</span>
-        {context?.session?.session_summary && <span>{context.session.session_summary}</span>}
-        {lastAssistant && <span>{lastAssistant.content}</span>}
-      </div>
-      <div className="index-actions">
-        <button className="primary-action" onClick={onContinue}>Continue</button>
-        <button onClick={onSummarize} disabled={!context?.node}>Summarize section</button>
-        <button onClick={onAsk} disabled={!context?.node}>Ask about section</button>
-      </div>
-    </div>
-  );
 }

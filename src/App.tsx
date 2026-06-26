@@ -13,7 +13,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { ProviderSettings } from "./stores/settingsStore";
 import type { Document } from "./stores/documentStore";
-import type { InitialIndexAction } from "./components/AiSidebar";
 import { isTauriRuntime } from "./tauriRuntime";
 
 function App() {
@@ -30,18 +29,11 @@ function App() {
   const [leftOpen, setLeftOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiInputDraft, setAiInputDraft] = useState<string>();
-  const [initialIndexAction, setInitialIndexAction] = useState<InitialIndexAction | undefined>();
 
   const openAiPanel = useCallback((draft?: string) => {
     setLeftOpen(false);
     setAiOpen(true);
     if (draft) setAiInputDraft(draft);
-  }, []);
-
-  const openIndexGuide = useCallback((action: InitialIndexAction) => {
-    setInitialIndexAction(action);
-    setLeftOpen(false);
-    setAiOpen(true);
   }, []);
 
   const goHome = useCallback(() => {
@@ -148,7 +140,7 @@ function App() {
         )}
         <div className="center-viewer">
           <Suspense fallback={<div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading…</div>}>
-            <CenterViewer onBackHome={goHome} onOpenLibrary={openLibraryPanel} onOpenAi={openAiPanel} onOpenIndexGuide={openIndexGuide} />
+            <CenterViewer onBackHome={goHome} onOpenLibrary={openLibraryPanel} onOpenAi={openAiPanel} />
           </Suspense>
         </div>
         {leftOpen && (
@@ -167,8 +159,6 @@ function App() {
               <AiSidebar
                 draftInput={aiInputDraft}
                 onDraftConsumed={() => setAiInputDraft(undefined)}
-                initialIndexAction={initialIndexAction}
-                onInitialIndexActionConsumed={() => setInitialIndexAction(undefined)}
               />
             </Suspense>
             </aside>

@@ -591,13 +591,10 @@ pub async fn run_ai_workflow(
         api_key = api_key_val;
         model = m;
 
-        // Look up section page range for chapter_qa
-        let toc_node_id = context_pack.hard_evidence.iter()
-            .find(|item| item.kind == "toc_breadcrumb")
-            .and_then(|item| item.toc_node_id.as_deref())
-            .map(|id| id.to_string());
         section_start = if input.mode == "chapter_qa" {
-            if let Some(ref nid) = toc_node_id {
+            if let Some(start) = input.start_page {
+                start
+            } else if let Some(ref nid) = input.toc_node_id {
                 conn.query_row(
                     "SELECT start_page FROM toc_nodes WHERE id = ?1",
                     rusqlite::params![nid],
@@ -606,7 +603,9 @@ pub async fn run_ai_workflow(
             } else { input.page_number }
         } else { 1 };
         section_end = if input.mode == "chapter_qa" {
-            if let Some(ref nid) = toc_node_id {
+            if let Some(end) = input.end_page {
+                end
+            } else if let Some(ref nid) = input.toc_node_id {
                 conn.query_row(
                     "SELECT COALESCE(end_page, start_page) FROM toc_nodes WHERE id = ?1",
                     rusqlite::params![nid],
