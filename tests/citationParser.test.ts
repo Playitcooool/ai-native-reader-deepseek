@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCitations } from "../src/features/citations/citationParser";
+import { linkCitationMarkdown, parseCitations } from "../src/features/citations/citationParser";
 
 describe("parseCitations", () => {
   it("parses [p.12]", () => {
@@ -40,5 +40,31 @@ describe("parseCitations", () => {
     expect(parseCitations("[p.1234]")).toEqual([
       { pageNumber: 1234, match: "[p.1234]" },
     ]);
+  });
+});
+
+describe("linkCitationMarkdown", () => {
+  it("links [p.12], [p 12], and multiple citations", () => {
+    expect(linkCitationMarkdown("See [p.12] and [p 13].")).toBe(
+      "See [p.12](ai-page://12) and [p 13](ai-page://13).",
+    );
+  });
+
+  it("ignores citations in fenced code blocks", () => {
+    expect(linkCitationMarkdown("Before [p.1]\n```\n[p.2]\n```\nAfter [p.3]")).toBe(
+      "Before [p.1](ai-page://1)\n```\n[p.2]\n```\nAfter [p.3](ai-page://3)",
+    );
+  });
+
+  it("ignores citations in inline code and math", () => {
+    expect(linkCitationMarkdown("Use `[p.2]` and $[p.3]$ but cite [p.4].")).toBe(
+      "Use `[p.2]` and $[p.3]$ but cite [p.4](ai-page://4).",
+    );
+  });
+
+  it("ignores citations in block math", () => {
+    expect(linkCitationMarkdown("$$\n[p.5]\n$$\nSee [p.6]")).toBe(
+      "$$\n[p.5]\n$$\nSee [p.6](ai-page://6)",
+    );
   });
 });

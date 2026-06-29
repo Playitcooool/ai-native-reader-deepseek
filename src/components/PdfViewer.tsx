@@ -2,9 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import * as pdfjsLib from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import "../pdfjs";
-import { documentDisplayTitle, useDocumentStore } from "../stores/documentStore";
+import { useDocumentStore } from "../stores/documentStore";
 import { useSettingsStore } from "../stores/settingsStore";
-import { useAiStore, setOcrPdfRef } from "../stores/aiStore";
+import { setOcrPdfRef } from "../stores/aiStore";
 import { invoke } from "@tauri-apps/api/core";
 import { extractToc, type TocNodeInput } from "../features/toc/tocTree";
 import {
@@ -21,6 +21,7 @@ import type { InkToolState } from "../features/ink/inkGeometry";
 import { useToast } from "./Toast";
 import ShortcutsModal from "./ShortcutsModal";
 import { Icon } from "./Icons";
+import { draftFromSelection } from "../features/ai/aiPanelHelpers";
 
 interface PdfViewerProps {
   documentId: string;
@@ -56,7 +57,6 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
     loadToc,
     currentDocument,
   } = useDocumentStore();
-  const runWorkflow = useAiStore((s) => s.runWorkflow);
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
@@ -297,23 +297,11 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
   }, []);
 
   // Handle Explain action
-  const handleExplain = useCallback(async () => {
-    if (!currentDocument || !selectionText) return;
-    const text = selectionText;
-    onOpenAi?.();
+  const handleExplain = useCallback(() => {
+    if (!selectionText) return;
+    onOpenAi?.(draftFromSelection(selectionText));
     clearSelection();
-    try {
-      await runWorkflow({
-        documentId: currentDocument.id,
-        documentTitle: documentDisplayTitle(currentDocument),
-        mode: "selection_explain",
-        pageNumber: currentPage,
-        selectedText: text,
-      });
-    } catch {
-      addToast({ type: "error", message: "AI explanation failed." });
-    }
-  }, [currentDocument, selectionText, currentPage, onOpenAi, clearSelection, runWorkflow, addToast]);
+  }, [selectionText, onOpenAi, clearSelection]);
 
   // Handle Translate action
   const handleTranslate = useCallback(async (text: string) => {
@@ -622,7 +610,7 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
           position={selectionPos}
           onClose={clearSelection}
           onAsk={(text) => {
-            onOpenAi?.(`About this selection:\n\n${text}`);
+            onOpenAi?.(draftFromSelection(text));
           }}
           onExplain={handleExplain}
           onTranslate={handleTranslate}

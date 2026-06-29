@@ -152,8 +152,8 @@ function App() {
           </div>
         )}
         {aiOpen && (
-          <div className="drawer-backdrop" onMouseDown={() => setAiOpen(false)}>
-            <aside className="ai-sheet" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="ai-floating-layer">
+            <aside className="ai-sheet" role="complementary" aria-label="AI reading companion">
               <button aria-label="Close AI" className="sheet-close" onClick={() => setAiOpen(false)}>×</button>
             <Suspense fallback={<div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading…</div>}>
               <AiSidebar

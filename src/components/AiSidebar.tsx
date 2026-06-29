@@ -1,276 +1,209 @@
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { documentDisplayTitle, useDocumentStore } from "../stores/documentStore";
 import { type AiMessage, useAiStore } from "../stores/aiStore";
 import { useUndoStore } from "../stores/undoStore";
-import ReactMarkdown from "react-markdown";
-import { invoke } from "@tauri-apps/api/core";
-import { useToast } from "./Toast";
 import { inferAskScope } from "../features/ai/promptScope";
-
-const line = "1px solid var(--border-color)";
-const tinyButton: CSSProperties = { padding: "2px 6px", borderRadius: 3, fontSize: 11, cursor: "pointer" };
-const ghostButton: CSSProperties = { ...tinyButton, background: "transparent", color: "var(--text-secondary)", border: line };
-const messageStyle: CSSProperties = {
-  padding: "6px 8px",
-  borderRadius: 4,
-  background: "var(--bg-primary)",
-  border: line,
-  fontSize: 12,
-  lineHeight: 1.5,
-};
-const labelStyle: CSSProperties = {
-  fontSize: 10,
-  fontWeight: 600,
-  color: "var(--text-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.5px",
-};
-
-function primaryButton(bg = "var(--accent-color)"): CSSProperties {
-  return { ...tinyButton, background: bg, color: "#fff", border: "none", fontWeight: 500 };
-}
+import { draftFromSelection, shouldFollowScroll } from "../features/ai/aiPanelHelpers";
+import { useToast } from "./Toast";
+import AiMarkdown from "./AiMarkdown";
 
 interface AiSidebarProps {
   draftInput?: string;
   onDraftConsumed?: () => void;
 }
 
-export default function AiSidebar({
-  draftInput,
-  onDraftConsumed,
-}: AiSidebarProps) {
+export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProps) {
   const { currentDocument, currentPage, setCurrentPage, tocNodes } = useDocumentStore();
   const { messages, isGenerating, aiPhase, streamingContent, runWorkflow, cancelWorkflow, retryLastWorkflow, lastWorkflowInput } = useAiStore();
   const pushUndo = useUndoStore((s) => s.pushUndo);
   const [input, setInput] = useState("");
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
   const [savedNotes, setSavedNotes] = useState<Set<string>>(new Set());
+  const [feedback, setFeedback] = useState("");
   const [showRange, setShowRange] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [showJump, setShowJump] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const followScrollRef = useRef(true);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!draftInput) return;
     setInput(draftInput);
+    inputRef.current?.focus();
     onDraftConsumed?.();
   }, [draftInput, onDraftConsumed]);
 
   useEffect(() => {
+    const updateSelection = () => setSelectedText(window.getSelection()?.toString().trim() ?? "");
+    document.addEventListener("selectionchange", updateSelection);
+    updateSelection();
+    return () => document.removeEventListener("selectionchange", updateSelection);
+  }, []);
+
+  useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const threshold = 50;
-    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-    if (isNearBottom) {
+    if (followScrollRef.current) {
       el.scrollTop = el.scrollHeight;
+      setShowJump(false);
+    } else {
+      setShowJump(true);
     }
-  }, [messages]);
+  }, [messages, streamingContent]);
 
-  const handleExplain = useCallback(async () => {
-    if (!currentDocument) return;
-    const sel = window.getSelection()?.toString().trim();
-    if (!sel) {
-      addToast({ type: "info", message: "Select text in the PDF first." });
-      return;
-    }
+  const maxPage = currentDocument?.page_count ?? 0;
+  const parsedRange = useMemo(() => {
+    const start = Number(rangeStart);
+    const end = Number(rangeEnd);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < 1) return null;
+    if (maxPage && (start > maxPage || end > maxPage)) return null;
+    return { start: Math.min(start, end), end: Math.max(start, end) };
+  }, [rangeStart, rangeEnd, maxPage]);
+
+  const runSafely = useCallback(async (fn: () => Promise<void>, label: string) => {
     try {
-      await runWorkflow({
-        documentId: currentDocument.id,
-        documentTitle: documentDisplayTitle(currentDocument),
-        mode: "selection_explain",
-        pageNumber: currentPage,
-        pageCount: currentDocument.page_count,
-        selectedText: sel,
-      });
+      await fn();
     } catch (err) {
-      addToast({ type: "error", message: `AI explanation failed: ${err}` });
+      addToast({ type: "error", message: `${label}: ${err}` });
     }
-  }, [currentDocument, currentPage, runWorkflow, addToast]);
+  }, [addToast]);
 
-  const handleSummarizePage = useCallback(async () => {
+  const handleSummarizePage = useCallback(() => runSafely(async () => {
     if (!currentDocument) return;
-    try {
-      await runWorkflow({
-        documentId: currentDocument.id,
-        documentTitle: documentDisplayTitle(currentDocument),
-        mode: "page_summary",
-        pageNumber: currentPage,
-        pageCount: currentDocument.page_count,
-      });
-    } catch (err) {
-      addToast({ type: "error", message: `AI summarization failed: ${err}` });
-    }
-  }, [currentDocument, currentPage, runWorkflow, addToast]);
+    await runWorkflow({
+      documentId: currentDocument.id,
+      documentTitle: documentDisplayTitle(currentDocument),
+      mode: "page_summary",
+      pageNumber: currentPage,
+      pageCount: currentDocument.page_count,
+    });
+  }, "AI summarization failed"), [currentDocument, currentPage, runWorkflow, runSafely]);
 
-  const handleSummarizeDocument = useCallback(async () => {
+  const handleSummarizeDocument = useCallback(() => runSafely(async () => {
     if (!currentDocument?.page_count) return;
-    try {
-      await runWorkflow({
-        documentId: currentDocument.id,
-        documentTitle: documentDisplayTitle(currentDocument),
-        mode: "range_summary",
-        pageNumber: currentPage,
-        pageCount: currentDocument.page_count,
-        startPage: 1,
-        endPage: currentDocument.page_count,
-      });
-    } catch (err) {
-      addToast({ type: "error", message: `AI document summarization failed: ${err}` });
-    }
-  }, [currentDocument, currentPage, runWorkflow, addToast]);
+    await runWorkflow({
+      documentId: currentDocument.id,
+      documentTitle: documentDisplayTitle(currentDocument),
+      mode: "range_summary",
+      pageNumber: currentPage,
+      pageCount: currentDocument.page_count,
+      startPage: 1,
+      endPage: currentDocument.page_count,
+    });
+  }, "AI document summarization failed"), [currentDocument, currentPage, runWorkflow, runSafely]);
 
-  const handleSummarizeRange = useCallback(async () => {
-    if (!currentDocument || !rangeStart || !rangeEnd) return;
-    let sp = Math.max(1, Math.min(parseInt(rangeStart) || 1, currentDocument.page_count ?? 9999));
-    let ep = Math.max(1, Math.min(parseInt(rangeEnd) || 1, currentDocument.page_count ?? 9999));
-    if (sp > ep) [sp, ep] = [ep, sp];
-    setRangeStart(String(sp));
-    setRangeEnd(String(ep));
-    try {
-      await runWorkflow({
-        documentId: currentDocument.id,
-        documentTitle: documentDisplayTitle(currentDocument),
-        mode: "range_summary",
-        pageNumber: currentPage,
-        pageCount: currentDocument.page_count,
-        startPage: sp,
-        endPage: ep,
-      });
-    } catch (err) {
-      addToast({ type: "error", message: `AI range summarization failed: ${err}` });
-    }
-  }, [currentDocument, currentPage, rangeStart, rangeEnd, runWorkflow, addToast]);
+  const handleSummarizeRange = useCallback(() => runSafely(async () => {
+    if (!currentDocument || !parsedRange) return;
+    setRangeStart(String(parsedRange.start));
+    setRangeEnd(String(parsedRange.end));
+    await runWorkflow({
+      documentId: currentDocument.id,
+      documentTitle: documentDisplayTitle(currentDocument),
+      mode: "range_summary",
+      pageNumber: currentPage,
+      pageCount: currentDocument.page_count,
+      startPage: parsedRange.start,
+      endPage: parsedRange.end,
+    });
+  }, "AI range summarization failed"), [currentDocument, currentPage, parsedRange, runWorkflow, runSafely]);
 
-  const handleAskQuestion = useCallback(async () => {
+  const handleAskQuestion = useCallback(() => runSafely(async () => {
     if (!currentDocument || !input.trim()) return;
     const question = input.trim();
     setInput("");
-    try {
-      const scope = inferAskScope(question, currentPage, tocNodes, currentDocument.page_count ?? 0);
-      const maxPage = currentDocument.page_count ?? 0;
-      if (scope.kind === "range" && maxPage > 0 && (scope.startPage < 1 || scope.endPage > maxPage)) {
-        throw new Error(`Requested pages ${scope.startPage}–${scope.endPage}, but this document has ${maxPage} pages.`);
-      }
-      if (scope.kind === "pages" && maxPage > 0) {
-        const badPage = scope.pages.find((page) => page < 1 || page > maxPage);
-        if (badPage) throw new Error(`Requested page ${badPage}, but this document has ${maxPage} pages.`);
-      }
-      const startPage = scope.kind === "range" || scope.kind === "section" ? scope.startPage : undefined;
-      const endPage = scope.kind === "range" || scope.kind === "section" ? scope.endPage : undefined;
-      const pageNumbers = scope.kind === "pages" ? scope.pages : undefined;
-      const mode = scope.kind === "pages" ? "pages_qa" : scope.kind === "range" ? "range_qa" : "chapter_qa";
-      await runWorkflow({
-        documentId: currentDocument.id,
-        documentTitle: documentDisplayTitle(currentDocument),
-        mode,
-        pageNumber: pageNumbers?.[0] ?? startPage ?? currentPage,
-        pageCount: currentDocument.page_count,
-        startPage,
-        endPage,
-        pageNumbers,
-        tocNodeId: scope.kind === "section" ? scope.node.id : undefined,
-        question,
-      });
-    } catch (err) {
-      addToast({ type: "error", message: `AI request failed: ${err}` });
+    const scope = inferAskScope(question, currentPage, tocNodes, currentDocument.page_count ?? 0);
+    const pageCount = currentDocument.page_count ?? 0;
+    if (scope.kind === "range" && pageCount > 0 && (scope.startPage < 1 || scope.endPage > pageCount)) {
+      throw new Error(`Requested pages ${scope.startPage}-${scope.endPage}, but this document has ${pageCount} pages.`);
     }
-  }, [currentDocument, currentPage, input, tocNodes, runWorkflow, addToast]);
+    if (scope.kind === "pages" && pageCount > 0) {
+      const badPage = scope.pages.find((page) => page < 1 || page > pageCount);
+      if (badPage) throw new Error(`Requested page ${badPage}, but this document has ${pageCount} pages.`);
+    }
+    const startPage = scope.kind === "range" || scope.kind === "section" ? scope.startPage : undefined;
+    const endPage = scope.kind === "range" || scope.kind === "section" ? scope.endPage : undefined;
+    const pageNumbers = scope.kind === "pages" ? scope.pages : undefined;
+    await runWorkflow({
+      documentId: currentDocument.id,
+      documentTitle: documentDisplayTitle(currentDocument),
+      mode: scope.kind === "pages" ? "pages_qa" : scope.kind === "range" ? "range_qa" : "chapter_qa",
+      pageNumber: pageNumbers?.[0] ?? startPage ?? currentPage,
+      pageCount: currentDocument.page_count,
+      startPage,
+      endPage,
+      pageNumbers,
+      tocNodeId: scope.kind === "section" ? scope.node.id : undefined,
+      question,
+    });
+  }, "AI request failed"), [currentDocument, currentPage, input, tocNodes, runWorkflow, runSafely]);
 
-  const handleSaveAsNote = useCallback(
-    async (msg: AiMessage) => {
-      if (!currentDocument || savedNotes.has(msg.id)) return;
-      try {
-        const annotation = await invoke<{ id: string }>("create_annotation", {
-          input: {
-            document_id: currentDocument.id,
-            page_number: msg.page_number ?? currentPage,
-            type: "ai_note",
-            note_text: msg.content,
-            selected_text: null,
-          },
-        });
-        pushUndo({
-          label: "AI note",
-          undo: async () => { await invoke("delete_annotation", { annotationId: annotation.id }); },
-        });
-        window.dispatchEvent(new Event("annotations-changed"));
-        setSavedNotes((prev) => new Set(prev).add(msg.id));
-      } catch (err) {
-        addToast({ type: "error", message: "Failed to save note." });
-      }
-    },
-    [currentDocument, currentPage, savedNotes, pushUndo, addToast],
-  );
+  const handleSaveAsNote = useCallback(async (msg: AiMessage) => {
+    if (!currentDocument || savedNotes.has(msg.id)) return;
+    try {
+      const annotation = await invoke<{ id: string }>("create_annotation", {
+        input: {
+          document_id: currentDocument.id,
+          page_number: msg.page_number ?? currentPage,
+          type: "ai_note",
+          note_text: msg.content,
+          selected_text: null,
+        },
+      });
+      pushUndo({
+        label: "AI note",
+        undo: async () => { await invoke("delete_annotation", { annotationId: annotation.id }); },
+      });
+      window.dispatchEvent(new Event("annotations-changed"));
+      setSavedNotes((prev) => new Set(prev).add(msg.id));
+      setFeedback("Saved");
+    } catch {
+      addToast({ type: "error", message: "Failed to save note." });
+    }
+  }, [currentDocument, currentPage, savedNotes, pushUndo, addToast]);
 
-  const handleContinue = useCallback(
-    async (msg: AiMessage) => {
-      if (!currentDocument || isGenerating) return;
-      try {
-        await runWorkflow({
-          documentId: currentDocument.id,
-          documentTitle: documentDisplayTitle(currentDocument),
-          mode: "chapter_qa",
-          pageNumber: msg.page_number ?? currentPage,
-          pageCount: currentDocument.page_count,
-          question: "Continue from where you left off. Don't repeat what you already said.",
-        });
-      } catch (err) {
-        addToast({ type: "error", message: `Continue failed: ${err}` });
-      }
-    },
-    [currentDocument, currentPage, isGenerating, runWorkflow, addToast],
-  );
+  const copyMessage = useCallback(async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setFeedback("Copied");
+    } catch {
+      addToast({ type: "error", message: "Clipboard copy failed." });
+    }
+  }, [addToast]);
 
-  const handleCitationClick = useCallback(
-    (e: React.MouseEvent, pageNumber: number) => {
-      e.preventDefault();
-      setCurrentPage(pageNumber);
-      invoke("update_last_page", {
-        documentId: currentDocument?.id,
-        pageNumber,
-      }).catch(() => {});
-    },
-    [currentDocument?.id, setCurrentPage],
-  );
+  const handleContinue = useCallback((msg: AiMessage) => runSafely(async () => {
+    if (!currentDocument || isGenerating) return;
+    await runWorkflow({
+      documentId: currentDocument.id,
+      documentTitle: documentDisplayTitle(currentDocument),
+      mode: "chapter_qa",
+      pageNumber: msg.page_number ?? currentPage,
+      pageCount: currentDocument.page_count,
+      question: "Continue from where you left off. Don't repeat what you already said.",
+    });
+  }, "Continue failed"), [currentDocument, currentPage, isGenerating, runWorkflow, runSafely]);
 
-  const citationRenderers = useCallback(
-    () => ({
-      p: ({ children }: any) => {
-        const text = extractText(children);
-        if (!text) return <p>{children}</p>;
-        const parts = text.split(/(\[p\.?\s*\d+\])/gi);
-        if (parts.length === 1) return <p>{children}</p>;
+  const jumpToPage = useCallback((pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    if (currentDocument?.id) {
+      invoke("update_last_page", { documentId: currentDocument.id, pageNumber }).catch(() => {});
+    }
+  }, [currentDocument?.id, setCurrentPage]);
 
-        return (
-          <p>
-            {parts.map((part: string, i: number) => {
-              const match = part.match(/\[p\.?\s*(\d+)\]/i);
-              if (match) {
-                const page = parseInt(match[1], 10);
-                return (
-                  <a
-                    key={i}
-                    href="#"
-                    onClick={(e) => handleCitationClick(e, page)}
-                    style={{
-                      color: "var(--accent-color)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                    }}
-                  >
-                    [p.{page}]
-                  </a>
-                );
-              }
-              return <span key={i}>{part}</span>;
-            })}
-          </p>
-        );
-      },
-    }),
-    [handleCitationClick],
-  );
+  const jumpToLatest = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    followScrollRef.current = true;
+    setShowJump(false);
+  }, []);
 
   if (!currentDocument) {
     return (
@@ -283,138 +216,96 @@ export default function AiSidebar({
     );
   }
 
-  const contextStatus = lastWorkflowInput
-    ? `p.${lastWorkflowInput.pageNumber} · ${modeLabel(lastWorkflowInput.mode)} · ${
-        aiPhase.startsWith("ocr:") ? `OCR page ${aiPhase.split(":")[1]}` :
-        aiPhase.startsWith("waiting_for_text:") ? `extracting page ${aiPhase.split(":")[1]}` :
-        aiPhase === "building_context" ? "building context" :
-        aiPhase === "calling_ai" ? "querying AI" :
-        "thinking"
-      }`
-    : "";
+  const contextStatus = lastWorkflowInput ? `${modeLabel(lastWorkflowInput.mode)} · ${phaseLabel(aiPhase)}` : "";
 
   return (
     <div className="sidebar-inner">
       <div className="ai-toolbar">
         <span className="ai-title">AI</span>
-        <button onClick={handleSummarizePage} disabled={isGenerating}
-          style={primaryButton()}>
-          Summarize
-        </button>
-        <button onClick={handleSummarizeDocument} disabled={isGenerating || !currentDocument.page_count}
-          style={ghostButton}>
-          Paper
-        </button>
-        <button onClick={() => setShowRange(!showRange)}
-          style={showRange ? primaryButton() : { ...ghostButton, background: "var(--bg-tertiary)", border: "none" }}>
-          Range
-        </button>
-        <button onMouseDown={(e) => e.preventDefault()} onClick={handleExplain}
-          disabled={isGenerating}
-          style={primaryButton("var(--success-color)")}>
-          Explain
-        </button>
+        <button className="ai-primary-button" onClick={handleSummarizePage} disabled={isGenerating}>Page</button>
+        <button className="ai-ghost-button" onClick={handleSummarizeDocument} disabled={isGenerating || !currentDocument.page_count}>Paper</button>
+        <button className={showRange ? "ai-primary-button" : "ai-ghost-button"} onClick={() => setShowRange(!showRange)}>Range</button>
+        {selectedText && (
+          <button className="ai-ghost-button" onMouseDown={(e) => e.preventDefault()} onClick={() => setInput(draftFromSelection(selectedText))} disabled={isGenerating}>
+            Ask Selection
+          </button>
+        )}
         {lastWorkflowInput && !isGenerating && (
-          <button onClick={() => retryLastWorkflow().catch((err) => addToast({ type: "error", message: `AI retry failed: ${err}` }))}
-            style={ghostButton}>
-            ↻ Retry
+          <button className="ai-ghost-button" onClick={() => retryLastWorkflow().catch((err) => addToast({ type: "error", message: `AI retry failed: ${err}` }))}>
+            Retry
           </button>
         )}
       </div>
 
       {showRange && (
         <div className="ai-range">
-          <span style={{ color: "var(--text-muted)", fontSize: 11 }}>From</span>
-          <input type="number" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} placeholder="1" min={1} max={currentDocument?.page_count ?? 9999}
-            style={{ width: 40, padding: "2px 4px", border: line, borderRadius: 3, fontSize: 11, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
-          <span style={{ color: "var(--text-muted)", fontSize: 11 }}>to</span>
-          <input type="number" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} placeholder="1" min={1} max={currentDocument?.page_count ?? 9999}
-            style={{ width: 40, padding: "2px 4px", border: line, borderRadius: 3, fontSize: 11, background: "var(--bg-primary)", color: "var(--text-primary)" }} />
-          <button onClick={handleSummarizeRange} disabled={isGenerating || !rangeStart || !rangeEnd}
-            style={primaryButton()}>
-            Go
-          </button>
+          <label>From <input type="number" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} min={1} max={maxPage || undefined} placeholder="1" /></label>
+          <label>To <input type="number" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} min={1} max={maxPage || undefined} placeholder={String(maxPage || 1)} /></label>
+          <button className="ai-primary-button" onClick={handleSummarizeRange} disabled={isGenerating || !parsedRange}>Go</button>
         </div>
       )}
 
-      <div ref={listRef} role="log" aria-live="polite" aria-label="AI conversation" className="ai-log">
+      <div
+        ref={listRef}
+        role="log"
+        aria-live="polite"
+        aria-label="AI conversation"
+        className="ai-log"
+        onScroll={(event) => {
+          const el = event.currentTarget;
+          followScrollRef.current = shouldFollowScroll(el.scrollTop, el.clientHeight, el.scrollHeight);
+          if (followScrollRef.current) setShowJump(false);
+        }}
+      >
         {messages.map((msg) => (
-          <div key={msg.id} style={{ ...messageStyle, background: msg.role === "user" ? "var(--bg-secondary)" : "var(--bg-primary)" }}>
-            <div style={{ ...labelStyle, marginBottom: 2 }}>
-              {msg.role === "user" ? "You" : "AI"}
-            </div>
-            {msg.role === "assistant" ? (
-              <div className="markdown-content">
-                <ReactMarkdown components={citationRenderers()}>{msg.content}</ReactMarkdown>
-              </div>
-            ) : (
-              <div>{msg.content}</div>
-            )}
+          <article key={msg.id} className={`ai-message ai-message-${msg.role}`} tabIndex={0}>
+            <div className="ai-message-label">{msg.role === "user" ? "You" : "AI"}</div>
+            {msg.role === "assistant" ? <AiMarkdown onPageLink={jumpToPage}>{msg.content}</AiMarkdown> : <div className="ai-user-text">{msg.content}</div>}
             {msg.role === "assistant" && contextWarnings(msg).length > 0 && (
-              <div style={{ marginTop: 4, color: "var(--text-muted)", fontSize: 10, lineHeight: 1.35 }}>
-                Context: {contextWarnings(msg).join(" ")}
-              </div>
+              <div className="ai-context-warning">Context: {contextWarnings(msg).join(" ")}</div>
             )}
             {msg.role === "assistant" && (
-              <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
-                <button onClick={() => navigator.clipboard.writeText(msg.content)}
-                  title="Copy"
-                  style={{ ...ghostButton, fontSize: 12, lineHeight: 1, color: "var(--text-muted)" }}>
-                  📋
-                </button>
-                <button onClick={() => handleSaveAsNote(msg)} disabled={savedNotes.has(msg.id)}
-                  style={{ ...ghostButton, fontSize: 10, color: savedNotes.has(msg.id) ? "var(--text-muted)" : "var(--accent-color)", borderColor: savedNotes.has(msg.id) ? "var(--border-color)" : "var(--accent-color)" }}>
-                  {savedNotes.has(msg.id) ? "✓ Saved" : "Save"}
-                </button>
-                <button onClick={() => handleContinue(msg)} disabled={isGenerating}
-                  style={{ ...ghostButton, fontSize: 10 }}>
-                  Continue
-                </button>
+              <div className="ai-message-actions">
+                <button onClick={() => copyMessage(msg.content)}>Copy</button>
+                <button onClick={() => handleSaveAsNote(msg)} disabled={savedNotes.has(msg.id)}>{savedNotes.has(msg.id) ? "Saved" : "Save note"}</button>
+                <button onClick={() => handleContinue(msg)} disabled={isGenerating}>Continue</button>
               </div>
             )}
             {import.meta.env.DEV && msg.context_snapshot_json && (
-              <details style={{ marginTop: 4, fontSize: 10, color: "var(--text-muted)" }}>
-                <summary style={{ cursor: "pointer" }}>Context</summary>
-                <pre style={{ marginTop: 2, padding: 4, background: "var(--bg-tertiary)", borderRadius: 3, maxHeight: 120, overflow: "auto", fontSize: 10 }}>
-                  {JSON.stringify(JSON.parse(msg.context_snapshot_json), null, 2)}
-                </pre>
+              <details className="ai-dev-context">
+                <summary>Context</summary>
+                <pre>{JSON.stringify(JSON.parse(msg.context_snapshot_json), null, 2)}</pre>
               </details>
             )}
-          </div>
+          </article>
         ))}
         {isGenerating && streamingContent && (
-          <div style={messageStyle}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
-              <span style={labelStyle}>
-                AI
-              </span>
-              <button onClick={cancelWorkflow} title="Cancel"
-                style={{ ...ghostButton, marginLeft: "auto", padding: "1px 5px", fontSize: 10, color: "var(--text-muted)" }}>
-                ✕
-              </button>
+          <article className="ai-message ai-message-assistant">
+            <div className="ai-stream-header">
+              <span className="ai-message-label">AI</span>
+              <button onClick={cancelWorkflow} title="Cancel">Cancel</button>
             </div>
-            <div className="markdown-content">
-              <ReactMarkdown>{streamingContent}</ReactMarkdown>
-            </div>
-          </div>
+            <AiMarkdown onPageLink={jumpToPage}>{streamingContent}</AiMarkdown>
+          </article>
         )}
         {isGenerating && !streamingContent && (
-          <div style={{ padding: "8px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
+          <div className="ai-thinking">
             <span>{contextStatus || "Thinking..."}</span>
-            <button onClick={cancelWorkflow} title="Cancel"
-              style={{ ...ghostButton, marginLeft: 8, color: "var(--text-muted)" }}>
-              ✕
-            </button>
+            <button onClick={cancelWorkflow} title="Cancel">Cancel</button>
           </div>
         )}
       </div>
 
+      {showJump && <button className="ai-jump-latest" onClick={jumpToLatest}>Jump to latest</button>}
+      {feedback && <div className="ai-feedback" role="status" onAnimationEnd={() => setFeedback("")}>{feedback}</div>}
+
       <div className="ai-composer">
         <textarea
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
               e.preventDefault();
               handleAskQuestion();
             }
@@ -422,16 +313,11 @@ export default function AiSidebar({
           onInput={(e) => {
             const el = e.currentTarget;
             el.style.height = "auto";
-            el.style.height = el.scrollHeight + "px";
+            el.style.height = `${el.scrollHeight}px`;
           }}
-          placeholder="Ask about this page…"
+          placeholder="Ask about this page..."
           disabled={isGenerating}
           rows={1}
-          style={{
-            flex: 1, padding: "5px 8px", border: line,
-            borderRadius: 4, fontSize: 12, background: "var(--bg-primary)", color: "var(--text-primary)",
-            resize: "none", overflow: "hidden", lineHeight: 1.4, fontFamily: "inherit",
-          }}
         />
         <button className="ai-send" onClick={handleAskQuestion} disabled={isGenerating || !input.trim()} title="Ask" aria-label="Ask">
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4.5 21 12 4 19.5v-6l9-1.5-9-1.5v-6Z" /></svg>
@@ -441,21 +327,20 @@ export default function AiSidebar({
   );
 }
 
-// Helper to extract text from React children
-function extractText(children: any): string {
-  if (typeof children === "string") return children;
-  if (Array.isArray(children))
-    return children.map(extractText).join("");
-  if (children?.props?.children) return extractText(children.props.children);
-  return "";
-}
-
 function modeLabel(mode: string): string {
   if (mode === "page_summary") return "page";
   if (mode === "range_summary") return "range";
   if (mode === "pages_qa") return "pages";
   if (mode === "selection_explain") return "selection";
   return "question";
+}
+
+function phaseLabel(aiPhase: string): string {
+  if (aiPhase.startsWith("ocr:")) return `OCR page ${aiPhase.split(":")[1]}`;
+  if (aiPhase.startsWith("waiting_for_text:")) return `extracting page ${aiPhase.split(":")[1]}`;
+  if (aiPhase === "building_context") return "building context";
+  if (aiPhase === "calling_ai") return "querying AI";
+  return "thinking";
 }
 
 function contextWarnings(msg: AiMessage): string[] {
