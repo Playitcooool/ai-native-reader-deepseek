@@ -205,6 +205,16 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
     setShowJump(false);
   }, []);
 
+  const toggleRange = useCallback(() => {
+    setShowRange((open) => {
+      if (!open) {
+        setRangeStart((value) => value || String(currentPage));
+        setRangeEnd((value) => value || String(currentPage));
+      }
+      return !open;
+    });
+  }, [currentPage]);
+
   if (!currentDocument) {
     return (
       <div className="sidebar-inner">
@@ -224,7 +234,7 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
         <span className="ai-title">AI</span>
         <button className="ai-primary-button" onClick={handleSummarizePage} disabled={isGenerating}>Page</button>
         <button className="ai-ghost-button" onClick={handleSummarizeDocument} disabled={isGenerating || !currentDocument.page_count}>Paper</button>
-        <button className={showRange ? "ai-primary-button" : "ai-ghost-button"} onClick={() => setShowRange(!showRange)}>Range</button>
+        <button className={showRange ? "ai-primary-button" : "ai-ghost-button"} onClick={toggleRange}>Range</button>
         {selectedText && (
           <button className="ai-ghost-button" onMouseDown={(e) => e.preventDefault()} onClick={() => setInput(draftFromSelection(selectedText))} disabled={isGenerating}>
             Ask Selection
@@ -290,7 +300,8 @@ export default function AiSidebar({ draftInput, onDraftConsumed }: AiSidebarProp
         )}
         {isGenerating && !streamingContent && (
           <div className="ai-thinking">
-            <span>{contextStatus || "Thinking..."}</span>
+            <span>{contextStatus || "Thinking"}</span>
+            <span aria-hidden="true" className="ai-thinking-dots"><span /> <span /> <span /></span>
             <button onClick={cancelWorkflow} title="Cancel">Cancel</button>
           </div>
         )}
@@ -339,8 +350,8 @@ function phaseLabel(aiPhase: string): string {
   if (aiPhase.startsWith("ocr:")) return `OCR page ${aiPhase.split(":")[1]}`;
   if (aiPhase.startsWith("waiting_for_text:")) return `extracting page ${aiPhase.split(":")[1]}`;
   if (aiPhase === "building_context") return "building context";
-  if (aiPhase === "calling_ai") return "querying AI";
-  return "thinking";
+  if (aiPhase === "calling_ai") return "Thinking";
+  return "Thinking";
 }
 
 function contextWarnings(msg: AiMessage): string[] {

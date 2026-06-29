@@ -612,10 +612,21 @@
   line-height: 1.55;
 }
 
+.ai-message-assistant {
+  align-self: flex-start;
+  max-width: 100%;
+  border-color: transparent;
+  background: transparent;
+  padding: 4px 2px;
+}
+
 .ai-message-user {
   align-self: flex-end;
-  max-width: 92%;
-  background: var(--bg-secondary);
+  max-width: 82%;
+  border-color: transparent;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  padding: 8px 10px;
 }
 
 .ai-message-label {
@@ -651,13 +662,40 @@
 }
 
 .ai-thinking {
-  display: flex;
-  justify-content: center;
+  align-self: flex-start;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.ai-thinking-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.ai-thinking-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ai-thinking-dot 1s infinite ease-in-out;
+}
+
+.ai-thinking-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ai-thinking-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ai-thinking-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
 }
 
 .ai-message-actions {
