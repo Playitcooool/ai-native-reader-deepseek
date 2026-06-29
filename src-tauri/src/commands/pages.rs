@@ -276,6 +276,7 @@ fn snippet(text: &str, query: &str, radius: usize) -> String {
 }
 
 #[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PageTextInput {
     pub page_number: i64,
     pub text: String,

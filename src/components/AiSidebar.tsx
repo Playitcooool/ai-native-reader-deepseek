@@ -79,6 +79,7 @@ export default function AiSidebar({
         documentTitle: documentDisplayTitle(currentDocument),
         mode: "selection_explain",
         pageNumber: currentPage,
+        pageCount: currentDocument.page_count,
         selectedText: sel,
       });
     } catch (err) {
@@ -94,9 +95,27 @@ export default function AiSidebar({
         documentTitle: documentDisplayTitle(currentDocument),
         mode: "page_summary",
         pageNumber: currentPage,
+        pageCount: currentDocument.page_count,
       });
     } catch (err) {
       addToast({ type: "error", message: `AI summarization failed: ${err}` });
+    }
+  }, [currentDocument, currentPage, runWorkflow, addToast]);
+
+  const handleSummarizeDocument = useCallback(async () => {
+    if (!currentDocument?.page_count) return;
+    try {
+      await runWorkflow({
+        documentId: currentDocument.id,
+        documentTitle: documentDisplayTitle(currentDocument),
+        mode: "range_summary",
+        pageNumber: currentPage,
+        pageCount: currentDocument.page_count,
+        startPage: 1,
+        endPage: currentDocument.page_count,
+      });
+    } catch (err) {
+      addToast({ type: "error", message: `AI document summarization failed: ${err}` });
     }
   }, [currentDocument, currentPage, runWorkflow, addToast]);
 
@@ -113,6 +132,7 @@ export default function AiSidebar({
         documentTitle: documentDisplayTitle(currentDocument),
         mode: "range_summary",
         pageNumber: currentPage,
+        pageCount: currentDocument.page_count,
         startPage: sp,
         endPage: ep,
       });
@@ -126,20 +146,28 @@ export default function AiSidebar({
     const question = input.trim();
     setInput("");
     try {
-      const scope = inferAskScope(question, currentPage, tocNodes);
+      const scope = inferAskScope(question, currentPage, tocNodes, currentDocument.page_count ?? 0);
       const maxPage = currentDocument.page_count ?? 0;
       if (scope.kind === "range" && maxPage > 0 && (scope.startPage < 1 || scope.endPage > maxPage)) {
         throw new Error(`Requested pages ${scope.startPage}–${scope.endPage}, but this document has ${maxPage} pages.`);
       }
-      const startPage = scope.kind === "page" ? undefined : scope.startPage;
-      const endPage = scope.kind === "page" ? undefined : scope.endPage;
+      if (scope.kind === "pages" && maxPage > 0) {
+        const badPage = scope.pages.find((page) => page < 1 || page > maxPage);
+        if (badPage) throw new Error(`Requested page ${badPage}, but this document has ${maxPage} pages.`);
+      }
+      const startPage = scope.kind === "range" || scope.kind === "section" ? scope.startPage : undefined;
+      const endPage = scope.kind === "range" || scope.kind === "section" ? scope.endPage : undefined;
+      const pageNumbers = scope.kind === "pages" ? scope.pages : undefined;
+      const mode = scope.kind === "pages" ? "pages_qa" : scope.kind === "range" ? "range_qa" : "chapter_qa";
       await runWorkflow({
         documentId: currentDocument.id,
         documentTitle: documentDisplayTitle(currentDocument),
-        mode: scope.kind === "range" ? "range_qa" : "chapter_qa",
-        pageNumber: startPage ?? currentPage,
+        mode,
+        pageNumber: pageNumbers?.[0] ?? startPage ?? currentPage,
+        pageCount: currentDocument.page_count,
         startPage,
         endPage,
+        pageNumbers,
         tocNodeId: scope.kind === "section" ? scope.node.id : undefined,
         question,
       });
@@ -183,6 +211,7 @@ export default function AiSidebar({
           documentTitle: documentDisplayTitle(currentDocument),
           mode: "chapter_qa",
           pageNumber: msg.page_number ?? currentPage,
+          pageCount: currentDocument.page_count,
           question: "Continue from where you left off. Don't repeat what you already said.",
         });
       } catch (err) {
@@ -272,6 +301,10 @@ export default function AiSidebar({
           style={primaryButton()}>
           Summarize
         </button>
+        <button onClick={handleSummarizeDocument} disabled={isGenerating || !currentDocument.page_count}
+          style={ghostButton}>
+          Paper
+        </button>
         <button onClick={() => setShowRange(!showRange)}
           style={showRange ? primaryButton() : { ...ghostButton, background: "var(--bg-tertiary)", border: "none" }}>
           Range
@@ -316,6 +349,11 @@ export default function AiSidebar({
               </div>
             ) : (
               <div>{msg.content}</div>
+            )}
+            {msg.role === "assistant" && contextWarnings(msg).length > 0 && (
+              <div style={{ marginTop: 4, color: "var(--text-muted)", fontSize: 10, lineHeight: 1.35 }}>
+                Context: {contextWarnings(msg).join(" ")}
+              </div>
             )}
             {msg.role === "assistant" && (
               <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
@@ -415,6 +453,17 @@ function extractText(children: any): string {
 function modeLabel(mode: string): string {
   if (mode === "page_summary") return "page";
   if (mode === "range_summary") return "range";
+  if (mode === "pages_qa") return "pages";
   if (mode === "selection_explain") return "selection";
   return "question";
+}
+
+function contextWarnings(msg: AiMessage): string[] {
+  if (!msg.context_snapshot_json) return [];
+  try {
+    const warnings = JSON.parse(msg.context_snapshot_json)?.warnings;
+    return Array.isArray(warnings) ? warnings.filter((w) => typeof w === "string") : [];
+  } catch {
+    return [];
+  }
 }

@@ -135,6 +135,30 @@ pub fn ask_page_range(
     (system_message().to_string(), user)
 }
 
+pub fn ask_pages(
+    title: &str,
+    pages: &[i64],
+    question: &str,
+    evidence: &str,
+) -> (String, String) {
+    let page_list = pages.iter().map(|page| page.to_string()).collect::<Vec<_>>().join(", ");
+    let user = format!(
+        "Task: Answer the user's question using only the requested PDF pages.\n\n\
+         Document: {}\n\
+         Requested pages: {}\n\n\
+         Question:\n\
+         {}\n\n\
+         Evidence:\n\
+         {}\n\n\
+         Rules:\n\
+         - Use only the provided evidence.\n\
+         - If evidence is insufficient, say so.\n\
+         - Cite pages using [p.X].",
+        title, page_list, question, evidence
+    );
+    (system_message().to_string(), user)
+}
+
 /// Prompt for the TOC-index experiment: AI has full book index + section content.
 pub fn toc_index_qa(
     title: &str,

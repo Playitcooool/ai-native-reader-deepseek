@@ -5,7 +5,7 @@ import { samplePagesForOpen } from "../src/features/pdf/pdfTextExtraction";
 import type { TocNode } from "../src/features/toc/TocSidebar";
 
 describe("pagesNeededForWorkflow", () => {
-  it("waits for every page in a summary range", () => {
+  it("waits for every page in a small summary range", () => {
     expect(pagesNeededForWorkflow({
       mode: "range_summary",
       pageNumber: 10,
@@ -18,7 +18,7 @@ describe("pagesNeededForWorkflow", () => {
     expect(pagesNeededForWorkflow({ mode: "page_summary", pageNumber: 23 })).toEqual([23]);
   });
 
-  it("waits for every page in a ranged chapter question", () => {
+  it("waits for every page in a small ranged chapter question", () => {
     expect(pagesNeededForWorkflow({
       mode: "chapter_qa",
       pageNumber: 3,
@@ -27,13 +27,30 @@ describe("pagesNeededForWorkflow", () => {
     })).toEqual([3, 4, 5]);
   });
 
-  it("waits for every page in explicit range questions", () => {
+  it("waits for every page in small explicit range questions", () => {
     expect(pagesNeededForWorkflow({
       mode: "range_qa",
       pageNumber: 20,
       startPage: 20,
       endPage: 21,
     })).toEqual([20, 21]);
+  });
+
+  it("samples long ranges instead of forcing every page through OCR", () => {
+    expect(pagesNeededForWorkflow({
+      mode: "range_summary",
+      pageNumber: 50,
+      startPage: 1,
+      endPage: 100,
+    })).toEqual([1, 15, 29, 43, 50, 58, 72, 86, 100]);
+  });
+
+  it("waits only for explicitly selected pages", () => {
+    expect(pagesNeededForWorkflow({
+      mode: "pages_qa",
+      pageNumber: 2,
+      pageNumbers: [9, 2, 9],
+    })).toEqual([2, 9]);
   });
 });
 
@@ -77,11 +94,6 @@ describe("inferAskScope", () => {
       startPage: 20,
       endPage: 21,
     });
-    expect(inferAskScope("compare pages 20 and 21", 4, [tocNode])).toEqual({
-      kind: "range",
-      startPage: 20,
-      endPage: 21,
-    });
   });
 
   it("uses explicit single pages in questions", () => {
@@ -94,6 +106,17 @@ describe("inferAskScope", () => {
       kind: "range",
       startPage: 20,
       endPage: 20,
+    });
+  });
+
+  it("uses explicit non-contiguous page sets in questions", () => {
+    expect(inferAskScope("compare pages 20 and 21", 4, [tocNode])).toEqual({
+      kind: "pages",
+      pages: [20, 21],
+    });
+    expect(inferAskScope("compare pages 2, 5, and 9", 4, [tocNode])).toEqual({
+      kind: "pages",
+      pages: [2, 5, 9],
     });
   });
 
@@ -112,5 +135,13 @@ describe("inferAskScope", () => {
 
   it("detects Chinese section terms", () => {
     expect(inferAskScope("总结本章", 4, [tocNode])).toMatchObject({ kind: "section" });
+  });
+
+  it("maps whole-document questions to the full page range", () => {
+    expect(inferAskScope("summarize the whole paper", 4, [tocNode], 120)).toEqual({
+      kind: "range",
+      startPage: 1,
+      endPage: 120,
+    });
   });
 });

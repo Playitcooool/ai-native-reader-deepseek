@@ -504,12 +504,13 @@ pub fn get_citations_for_message(
 pub struct RunAiWorkflowInput {
     pub document_id: String,
     pub document_title: Option<String>,
-    /// One of: selection_explain | page_summary | range_summary | chapter_qa | range_qa
+    /// One of: selection_explain | page_summary | range_summary | chapter_qa | range_qa | pages_qa
     pub mode: String,
     pub page_number: i64,
     pub selected_text: Option<String>,
     pub start_page: Option<i64>,
     pub end_page: Option<i64>,
+    pub page_numbers: Option<Vec<i64>>,
     pub question: Option<String>,
     /// If provided, reuse/save to this session; if empty, a new session is created.
     pub existing_session_id: Option<String>,
@@ -523,91 +524,6 @@ pub struct AiWorkflowResult {
     pub session_id: String,
     pub answer_md: String,
     pub context_snapshot: ContextPack,
-}
-
-fn ensure_ready_page_range(
-    conn: &rusqlite::Connection,
-    document_id: &str,
-    start_page: i64,
-    end_page: i64,
-) -> Result<(), String> {
-    let start = start_page.min(end_page);
-    let end = start_page.max(end_page);
-    let mut ready = std::collections::BTreeSet::new();
-    let mut stmt = conn
-        .prepare(
-            "SELECT page_number FROM pages
-             WHERE document_id = ?1
-               AND page_number BETWEEN ?2 AND ?3
-               AND text_status = 'ready'
-               AND char_count > 0",
-        )
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map(rusqlite::params![document_id, start, end], |row| row.get::<_, i64>(0))
-        .map_err(|e| e.to_string())?;
-    for page in rows.flatten() {
-        ready.insert(page);
-    }
-
-    let missing: Vec<i64> = (start..=end).filter(|page| !ready.contains(page)).collect();
-    if missing.is_empty() {
-        Ok(())
-    } else {
-        Err(format!(
-            "No readable text is available on page{} {}. Try a clearer scan or a smaller page range.",
-            if missing.len() == 1 { "" } else { "s" },
-            missing.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ")
-        ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::ensure_ready_page_range;
-
-    #[test]
-    fn rejects_missing_pages_in_requested_range() {
-        let conn = rusqlite::Connection::open_in_memory().unwrap();
-        conn.execute(
-            "CREATE TABLE pages (
-                document_id TEXT,
-                page_number INTEGER,
-                text_status TEXT,
-                char_count INTEGER
-            )",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO pages (document_id, page_number, text_status, char_count)
-             VALUES ('doc', 20, 'ready', 10)",
-            [],
-        ).unwrap();
-
-        let err = ensure_ready_page_range(&conn, "doc", 20, 21).unwrap_err();
-        assert!(err.contains("21"));
-    }
-
-    #[test]
-    fn accepts_ready_pages_in_requested_range() {
-        let conn = rusqlite::Connection::open_in_memory().unwrap();
-        conn.execute(
-            "CREATE TABLE pages (
-                document_id TEXT,
-                page_number INTEGER,
-                text_status TEXT,
-                char_count INTEGER
-            )",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO pages (document_id, page_number, text_status, char_count)
-             VALUES ('doc', 20, 'ready', 10), ('doc', 21, 'ready', 12)",
-            [],
-        ).unwrap();
-
-        ensure_ready_page_range(&conn, "doc", 21, 20).unwrap();
-    }
 }
 
 #[tauri::command]
@@ -634,15 +550,6 @@ pub async fn run_ai_workflow(
     let (base_url, api_key, model);
     {
         let conn = db.0.lock().map_err(|e| e.to_string())?;
-        if matches!(input.mode.as_str(), "range_summary" | "chapter_qa" | "range_qa") {
-            ensure_ready_page_range(
-                &conn,
-                &input.document_id,
-                input.start_page.unwrap_or(input.page_number),
-                input.end_page.unwrap_or(input.page_number),
-            )?;
-        }
-
         context_pack = context_builder::build_context_pack_for_mode(
             &conn,
             &input.document_id,
@@ -652,6 +559,8 @@ pub async fn run_ai_workflow(
             input.selected_text.as_deref(),
             input.start_page,
             input.end_page,
+            input.page_numbers.as_deref(),
+            input.question.as_deref(),
             Some(&session_id),
             input.toc_node_id.as_deref(),
         );
@@ -709,15 +618,22 @@ pub async fn run_ai_workflow(
     } // DB lock released here
 
     // 3. Build prompt messages
-    let evidence_text = context_pack
+    let mut evidence_text = context_pack
         .hard_evidence
         .iter()
         .map(|item| item.text.as_str())
         .collect::<Vec<_>>()
         .join("\n\n");
+    if !context_pack.warnings.is_empty() {
+        evidence_text = format!(
+            "[Context warnings]\n- {}\n\n{}",
+            context_pack.warnings.join("\n- "),
+            evidence_text
+        );
+    }
 
     let has_pdf_text = context_pack.hard_evidence.iter().any(|item| {
-        matches!(item.kind.as_str(), "page_text" | "range_text" | "selected_text")
+        matches!(item.kind.as_str(), "page_text" | "range_text" | "page_set_text" | "selected_text")
     });
     if !has_pdf_text {
         return Err("No readable text is available for this request yet. OCR may still be running; try again after it finishes.".into());
@@ -757,6 +673,11 @@ pub async fn run_ai_workflow(
             let sp = input.start_page.unwrap_or(input.page_number);
             let ep = input.end_page.unwrap_or(input.page_number);
             crate::ai::prompts::ask_page_range(title, sp, ep, q, &evidence_text)
+        }
+        "pages_qa" => {
+            let q = input.question.as_deref().unwrap_or("");
+            let pages = input.page_numbers.clone().unwrap_or_else(|| vec![input.page_number]);
+            crate::ai::prompts::ask_pages(title, &pages, q, &evidence_text)
         }
         "toc_index_qa" => {
             let toc_index = context_pack.hard_evidence.iter()

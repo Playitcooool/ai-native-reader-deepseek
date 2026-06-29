@@ -35,6 +35,8 @@ interface AiState {
     selectedText?: string;
     startPage?: number;
     endPage?: number;
+    pageNumbers?: number[];
+    pageCount?: number | null;
     question?: string;
     tocNodeId?: string;
   }) => Promise<string | null>;
@@ -112,7 +114,7 @@ export const useAiStore = create<AiState>((set, get) => ({
         const scope = pages.length === 1 ? `page ${pages[0]}` : "this range";
         throw new Error(`No readable text is available on ${scope}. Try a clearer scan or a smaller page range.`);
       }
-      if (status.failed > 0) {
+      if (status.failed > 0 && pages.length === 1) {
         throw new Error(`No readable text is available on page${status.failedPages.length === 1 ? "" : "s"} ${status.failedPages.join(", ")}. Try a clearer scan or a smaller page range.`);
       }
 
@@ -130,6 +132,7 @@ export const useAiStore = create<AiState>((set, get) => ({
           selected_text: input.selectedText ?? null,
           start_page: input.startPage ?? null,
           end_page: input.endPage ?? null,
+          page_numbers: input.pageNumbers ?? null,
           question: input.question ?? null,
           existing_session_id: get().sessionId,
           toc_node_id: input.tocNodeId ?? null,

@@ -99,6 +99,11 @@ const MAX_CHARS_CLOUD: i64 = 20000;
 #[allow(dead_code)]
 const MAX_CHARS_LOCAL: i64 = 8000;
 const NEARBY_PAGES: i64 = 1;
+const FULL_RANGE_PAGE_LIMIT: i64 = 12;
+const LONG_RANGE_PAGE_LIMIT: usize = 12;
+const LONG_RANGE_PAGE_CHARS: usize = 2200;
+const RELEVANT_PAGE_LIMIT: usize = 4;
+const RELEVANT_PAGE_CHARS: usize = 1800;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,11 +114,62 @@ fn estimate_tokens(chars: i64) -> i64 {
 }
 
 fn trim_text(text: &str, max_chars: usize) -> String {
-    if text.len() <= max_chars {
+    if text.chars().count() <= max_chars {
         text.to_string()
     } else {
-        format!("{}... [trimmed]", &text[..max_chars])
+        format!("{}... [trimmed]", text.chars().take(max_chars).collect::<String>())
     }
+}
+
+fn spread_page_texts(page_texts: &[(i64, String)], start_page: i64, end_page: i64) -> Vec<(i64, String)> {
+    let range_len = (end_page - start_page).abs() + 1;
+    if range_len <= FULL_RANGE_PAGE_LIMIT || page_texts.len() <= LONG_RANGE_PAGE_LIMIT {
+        return page_texts.to_vec();
+    }
+
+    let last = page_texts.len() - 1;
+    let mut indexes = std::collections::BTreeSet::new();
+    for i in 0..LONG_RANGE_PAGE_LIMIT {
+        indexes.insert((i * last + (LONG_RANGE_PAGE_LIMIT - 1) / 2) / (LONG_RANGE_PAGE_LIMIT - 1));
+    }
+    indexes
+        .into_iter()
+        .filter_map(|i| page_texts.get(i).cloned())
+        .collect()
+}
+
+fn question_terms(question: Option<&str>) -> Vec<String> {
+    let Some(question) = question else { return Vec::new(); };
+    let stop = ["about", "after", "again", "also", "compare", "does", "from", "have", "page", "pages", "paper", "summarize", "summary", "tell", "that", "this", "what", "when", "where", "which", "with"];
+    question
+        .split(|c: char| !c.is_alphanumeric())
+        .map(|term| term.to_lowercase())
+        .filter(|term| term.chars().count() >= 4 && !stop.contains(&term.as_str()))
+        .take(8)
+        .collect()
+}
+
+fn relevant_page_texts(
+    page_texts: &[(i64, String)],
+    already_included: &std::collections::BTreeSet<i64>,
+    question: Option<&str>,
+) -> Vec<(i64, String)> {
+    let terms = question_terms(question);
+    if terms.is_empty() {
+        return Vec::new();
+    }
+
+    let mut scored = page_texts
+        .iter()
+        .filter(|(page, _)| !already_included.contains(page))
+        .filter_map(|(page, text)| {
+            let lower = text.to_lowercase();
+            let score = terms.iter().filter(|term| lower.contains(term.as_str())).count();
+            (score > 0).then(|| (score, *page, text.clone()))
+        })
+        .collect::<Vec<_>>();
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    scored.into_iter().take(RELEVANT_PAGE_LIMIT).map(|(_, page, text)| (page, text)).collect()
 }
 
 /// Format the full TOC tree as a compact indented index string.
@@ -499,9 +555,11 @@ pub fn build_range_context(
     start_page: i64,
     end_page: i64,
     mode: &str,
+    question: Option<&str>,
     session_id: Option<&str>,
     toc_node_id: Option<&str>,
 ) -> ContextPack {
+    let (start_page, end_page) = (start_page.min(end_page), start_page.max(end_page));
     let mut hard_evidence = Vec::new();
     let mut soft_memory = Vec::new();
     let mut warnings = Vec::new();
@@ -532,8 +590,15 @@ pub fn build_range_context(
         }
     }
 
-    for (page, text) in &page_texts {
-        let entry = format!("--- Page {} ---\n{}", page, text);
+    let selected_texts = spread_page_texts(&page_texts, start_page, end_page);
+    let mut included_pages = std::collections::BTreeSet::new();
+    for (page, text) in &selected_texts {
+        let page_text = if page_texts.len() == selected_texts.len() {
+            text.clone()
+        } else {
+            trim_text(text, LONG_RANGE_PAGE_CHARS)
+        };
+        let entry = format!("[{}.{}]\n{}", label, page, page_text);
         if char_estimate + (entry.len() as i64) <= MAX_CHARS_CLOUD {
             hard_evidence.push(ContextItem {
                 id: format!("range_page_{}", page),
@@ -545,9 +610,10 @@ pub fn build_range_context(
                 is_hard_evidence: true,
             });
             char_estimate += entry.len() as i64;
+            included_pages.insert(*page);
         } else {
             warnings.push(format!(
-                "Range too large: included {} of {} pages (budget: {} chars).",
+                "Range too large: included {} of {} ready pages (budget: {} chars).",
                 hard_evidence.len(),
                 page_texts.len(),
                 MAX_CHARS_CLOUD
@@ -556,8 +622,41 @@ pub fn build_range_context(
         }
     }
 
+    for (page, text) in relevant_page_texts(&page_texts, &included_pages, question) {
+        let entry = format!("[{}.{} relevant to question]\n{}", label, page, trim_text(&text, RELEVANT_PAGE_CHARS));
+        if char_estimate + (entry.len() as i64) <= MAX_CHARS_CLOUD {
+            char_estimate += entry.len() as i64;
+            hard_evidence.push(ContextItem {
+                id: format!("relevant_page_{}", page),
+                kind: "range_text".into(),
+                priority: 2,
+                text: entry,
+                page_number: Some(page),
+                toc_node_id: toc_node_id.map(|id| id.to_string()),
+                is_hard_evidence: true,
+            });
+            included_pages.insert(page);
+        }
+    }
+
     if page_texts.is_empty() {
         warnings.push("No page text available for this range. Extraction may still be in progress.".into());
+    } else if page_texts.len() < (end_page - start_page).abs() as usize + 1 {
+        warnings.push(format!(
+            "Using {} ready page{} from requested range {}-{}. OCR/text extraction may still be running for the rest.",
+            page_texts.len(),
+            if page_texts.len() == 1 { "" } else { "s" },
+            start_page,
+            end_page
+        ));
+    }
+
+    if selected_texts.len() < page_texts.len() {
+        warnings.push(format!(
+            "Long range sampled {} of {} ready pages across the requested span.",
+            selected_texts.len(),
+            page_texts.len()
+        ));
     }
 
     if let Some(title) = section_title {
@@ -586,6 +685,70 @@ pub fn build_range_context(
         session_id: session_id.map(|s| s.to_string()),
         mode: mode.into(),
         scope_type: if toc_node_id.is_some() { "section".into() } else { "range".into() },
+        hard_evidence,
+        soft_memory,
+        citation_targets: vec![],
+        token_estimate: estimate_tokens(char_estimate),
+        char_estimate,
+        warnings,
+    }
+}
+
+pub fn build_pages_context(
+    conn: &Connection,
+    document_id: &str,
+    pages: &[i64],
+    mode: &str,
+    session_id: Option<&str>,
+) -> ContextPack {
+    let mut hard_evidence = Vec::new();
+    let mut soft_memory = Vec::new();
+    let mut warnings = Vec::new();
+    let mut char_estimate: i64 = 0;
+    let doc_type = get_document_type(conn, document_id);
+    let label = page_label(&doc_type);
+    let mut pages = pages.iter().copied().filter(|page| *page >= 1).collect::<Vec<_>>();
+    pages.sort_unstable();
+    pages.dedup();
+
+    for page in &pages {
+        match get_page_text(conn, document_id, *page) {
+            Some(text) => {
+                let entry = format!("[{}.{}]\n{}", label, page, text);
+                if char_estimate + (entry.len() as i64) <= MAX_CHARS_CLOUD {
+                    char_estimate += entry.len() as i64;
+                    hard_evidence.push(ContextItem {
+                        id: format!("selected_page_{}", page),
+                        kind: "page_set_text".into(),
+                        priority: 1,
+                        text: entry,
+                        page_number: Some(*page),
+                        toc_node_id: None,
+                        is_hard_evidence: true,
+                    });
+                } else {
+                    warnings.push(format!("Selected pages exceed context budget; stopped before page {}.", page));
+                    break;
+                }
+            }
+            None => warnings.push(format!("Page {} text not yet extracted.", page)),
+        }
+    }
+
+    if let Some(sid) = session_id {
+        for t in get_recent_turns(conn, sid, 3) {
+            if char_estimate + (t.text.len() as i64) < MAX_CHARS_CLOUD {
+                char_estimate += t.text.len() as i64;
+                soft_memory.push(t);
+            }
+        }
+    }
+
+    ContextPack {
+        document_id: document_id.to_string(),
+        session_id: session_id.map(|s| s.to_string()),
+        mode: mode.into(),
+        scope_type: "pages".into(),
         hard_evidence,
         soft_memory,
         citation_targets: vec![],
@@ -740,6 +903,8 @@ pub fn build_context_pack_for_mode(
     selected_text: Option<&str>,
     start_page: Option<i64>,
     end_page: Option<i64>,
+    page_numbers: Option<&[i64]>,
+    question: Option<&str>,
     session_id: Option<&str>,
     toc_node_id: Option<&str>,
 ) -> ContextPack {
@@ -754,12 +919,16 @@ pub fn build_context_pack_for_mode(
         "range_summary" | "range_qa" => {
             let s = start_page.unwrap_or(page_number);
             let e = end_page.unwrap_or(page_number);
-            build_range_context(conn, document_id, title, s, e, mode, session_id, None)
+            build_range_context(conn, document_id, title, s, e, mode, if mode == "range_qa" { question } else { None }, session_id, None)
+        }
+        "pages_qa" => {
+            let pages = page_numbers.unwrap_or(&[]);
+            build_pages_context(conn, document_id, pages, mode, session_id)
         }
         "chapter_qa" => {
             let s = start_page.unwrap_or(page_number);
             let e = end_page.unwrap_or(page_number);
-            build_range_context(conn, document_id, title, s, e, "chapter_qa", session_id, toc_node_id)
+            build_range_context(conn, document_id, title, s, e, "chapter_qa", question, session_id, toc_node_id)
         }
         "toc_index_qa" => {
             let nid = toc_node_id.unwrap_or("");
@@ -773,7 +942,12 @@ pub fn build_context_pack_for_mode(
 
 #[cfg(test)]
 mod tests {
-    use super::build_context_pack_for_mode;
+    use super::{build_context_pack_for_mode, trim_text};
+
+    #[test]
+    fn trim_text_handles_unicode_boundaries() {
+        assert_eq!(trim_text("你好世界", 2), "你好... [trimmed]");
+    }
 
     #[test]
     fn range_qa_builds_evidence_for_ready_pages() {
@@ -805,6 +979,8 @@ mod tests {
             Some(21),
             None,
             None,
+            None,
+            None,
         );
 
         let pages: Vec<i64> = pack
@@ -815,5 +991,143 @@ mod tests {
             .collect();
         assert_eq!(pages, vec![20, 21]);
         assert_eq!(pack.mode, "range_qa");
+    }
+
+    #[test]
+    fn long_ranges_sample_ready_pages_across_the_span() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE pages (
+                document_id TEXT,
+                page_number INTEGER,
+                text TEXT,
+                text_status TEXT,
+                char_count INTEGER
+            )",
+            [],
+        ).unwrap();
+        for page in 1..=100 {
+            conn.execute(
+                "INSERT INTO pages (document_id, page_number, text, text_status, char_count)
+                 VALUES ('doc', ?1, ?2, 'ready', 20)",
+                rusqlite::params![page, format!("page {}", page)],
+            ).unwrap();
+        }
+
+        let pack = build_context_pack_for_mode(
+            &conn,
+            "doc",
+            "Doc",
+            "range_summary",
+            1,
+            None,
+            Some(1),
+            Some(100),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let pages: Vec<i64> = pack
+            .hard_evidence
+            .iter()
+            .filter(|item| item.kind == "range_text")
+            .filter_map(|item| item.page_number)
+            .collect();
+        assert_eq!(pages.len(), 12);
+        assert_eq!(pages.first(), Some(&1));
+        assert_eq!(pages.last(), Some(&100));
+        assert!(pages.iter().any(|page| (45..=55).contains(page)));
+    }
+
+    #[test]
+    fn range_qa_adds_relevant_ready_pages_for_question_terms() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE pages (
+                document_id TEXT,
+                page_number INTEGER,
+                text TEXT,
+                text_status TEXT,
+                char_count INTEGER
+            )",
+            [],
+        ).unwrap();
+        for page in 1..=100 {
+            let text = if page == 42 {
+                "needle concept appears here".to_string()
+            } else {
+                format!("ordinary page {}", page)
+            };
+            conn.execute(
+                "INSERT INTO pages (document_id, page_number, text, text_status, char_count)
+                 VALUES ('doc', ?1, ?2, 'ready', 20)",
+                rusqlite::params![page, text],
+            ).unwrap();
+        }
+
+        let pack = build_context_pack_for_mode(
+            &conn,
+            "doc",
+            "Doc",
+            "range_qa",
+            1,
+            None,
+            Some(1),
+            Some(100),
+            None,
+            Some("Where is the needle concept?"),
+            None,
+            None,
+        );
+
+        assert!(pack
+            .hard_evidence
+            .iter()
+            .any(|item| item.id == "relevant_page_42" && item.text.contains("needle concept")));
+    }
+
+    #[test]
+    fn pages_qa_uses_only_requested_pages() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE pages (
+                document_id TEXT,
+                page_number INTEGER,
+                text TEXT,
+                text_status TEXT,
+                char_count INTEGER
+            )",
+            [],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO pages (document_id, page_number, text, text_status, char_count)
+             VALUES ('doc', 2, 'two', 'ready', 3), ('doc', 5, 'five', 'ready', 4), ('doc', 9, 'nine', 'ready', 4)",
+            [],
+        ).unwrap();
+
+        let pack = build_context_pack_for_mode(
+            &conn,
+            "doc",
+            "Doc",
+            "pages_qa",
+            2,
+            None,
+            None,
+            None,
+            Some(&[2, 9]),
+            None,
+            None,
+            None,
+        );
+
+        let pages: Vec<i64> = pack
+            .hard_evidence
+            .iter()
+            .filter(|item| item.kind == "page_set_text")
+            .filter_map(|item| item.page_number)
+            .collect();
+        assert_eq!(pages, vec![2, 9]);
     }
 }
