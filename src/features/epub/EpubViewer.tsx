@@ -63,7 +63,6 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
         setIsRtl((book as any).package?.metadata?.direction === "rtl");
 
         const rendition = book.renderTo(containerRef.current!, {
-          manager: "continuous",
           flow: "paginated",
           width: "100%",
           height: "100%",
@@ -86,17 +85,17 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
           setAtEnd(Boolean(location?.atEnd));
         });
 
-        await book.locations.generate(100);
-
-        // Restore position (last_page as 0-100 progress percentage)
-        const startPct = currentDocument?.last_page ?? 0;
-        if (startPct > 0) {
-          const target = book.locations.cfiFromPercentage(startPct / 100);
-          await rendition.display(target);
-        } else {
-          await rendition.display();
-        }
+        await rendition.display();
         if (!destroyed) setLoading(false);
+
+        void book.locations.generate(1000).then(async () => {
+          if (destroyed) return;
+          const startPct = currentDocument?.last_page ?? 0;
+          if (startPct > 0) {
+            const target = book.locations.cfiFromPercentage(startPct / 100);
+            await rendition.display(target);
+          }
+        }).catch(() => {});
 
         // Extract TOC from epubjs navigation
         const nav = book.navigation?.toc ?? [];
