@@ -16,6 +16,7 @@ import {
 import SelectionMenu from "../features/pdf/SelectionMenu";
 import PageView from "../features/pdf/PageView";
 import { findPageIndexAtOffset, useVisibleRange } from "../features/pdf/useVisibleRange";
+import { computeInitialPdfZoom } from "../features/pdf/pdfInitialZoom";
 import InkToolbarControls from "../features/ink/InkToolbarControls";
 import type { InkToolState } from "../features/ink/inkGeometry";
 import { useToast } from "./Toast";
@@ -24,6 +25,8 @@ import { Icon } from "./Icons";
 import { draftFromSelection } from "../features/ai/aiPanelHelpers";
 import { isTauriRuntime } from "../tauriRuntime";
 import type { Annotation } from "../stores/notesStore";
+
+const initialZoomKey = (documentId: string) => `rustybooks:pdf-initial-zoom:${documentId}`;
 
 interface PdfViewerProps {
   documentId: string;
@@ -259,6 +262,18 @@ export default function PdfViewer({ documentId, onBackHome, onOpenLibrary, onOpe
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
+
+  useEffect(() => {
+    if (currentDocument?.document_type !== "pdf" || basePageWidth <= 0 || pageCount <= 0) return;
+    const key = initialZoomKey(documentId);
+    if (localStorage.getItem(key)) return;
+    const containerWidth = scrollRef.current?.clientWidth ?? 0;
+    if (containerWidth <= 0) return;
+    const nextZoom = computeInitialPdfZoom(containerWidth, basePageWidth);
+    localStorage.setItem(key, "1");
+    setZoom(nextZoom);
+    invoke("update_last_zoom", { documentId, zoom: nextZoom }).catch(() => {});
+  }, [basePageWidth, currentDocument?.document_type, documentId, pageCount, setZoom]);
 
   // Update extraction priority when visible range changes
   useEffect(() => {
