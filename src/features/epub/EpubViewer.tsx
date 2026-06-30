@@ -20,8 +20,16 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
   const containerRef = useRef<HTMLDivElement | null>(null);
   const bookRef = useRef<Book | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
+  const { currentDocument, setCurrentPage, setTocNodes } = useDocumentStore();
+  const theme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [fontSize, setFontSize] = useState(100);
+  const [progress, setProgress] = useState(currentDocument?.last_page ?? 0);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+  const [isRtl, setIsRtl] = useState(false);
   const [inkRefreshKey, setInkRefreshKey] = useState(0);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [rendition, setRendition] = useState<Rendition | null>(null);
@@ -30,9 +38,6 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
     color: "#111827",
     penWidth: 4,
   });
-  const { currentDocument, setCurrentPage, setTocNodes } = useDocumentStore();
-  const theme = useSettingsStore((s) => s.theme);
-  const setTheme = useSettingsStore((s) => s.setTheme);
   const setContainerRef = useCallback((element: HTMLDivElement | null) => {
     containerRef.current = element;
     setContainerEl(element);
@@ -42,6 +47,11 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
   useEffect(() => {
     if (!containerRef.current) return;
     let destroyed = false;
+    setLoading(true);
+    setError(null);
+    setProgress(currentDocument?.last_page ?? 0);
+    setAtStart(true);
+    setAtEnd(false);
 
     const load = async () => {
       try {
@@ -50,34 +60,43 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
         await book.ready;
         if (destroyed) return;
         bookRef.current = book;
+        setIsRtl((book as any).package?.metadata?.direction === "rtl");
 
         const rendition = book.renderTo(containerRef.current!, {
-          flow: "scrolled-doc",
+          manager: "continuous",
+          flow: "paginated",
           width: "100%",
           height: "100%",
-          spread: "none",
+          spread: "auto",
+          minSpreadWidth: 900,
         });
+        applyEpubTheme(rendition, theme);
         renditionRef.current = rendition;
         setRendition(rendition);
 
-        // Restore position (last_page as 0-100 scroll percentage)
+        rendition.on("relocated", (location: any) => {
+          const percentage = location?.start?.percentage;
+          if (typeof percentage === "number") {
+            const pct = Math.max(0, Math.min(100, Math.round(percentage * 100)));
+            setProgress(pct);
+            setCurrentPage(pct);
+            invoke("update_last_page", { documentId, pageNumber: pct }).catch(() => {});
+          }
+          setAtStart(Boolean(location?.atStart));
+          setAtEnd(Boolean(location?.atEnd));
+        });
+
+        await book.locations.generate(100);
+
+        // Restore position (last_page as 0-100 progress percentage)
         const startPct = currentDocument?.last_page ?? 0;
         if (startPct > 0) {
-          await book.locations.generate(100);
           const target = book.locations.cfiFromPercentage(startPct / 100);
           await rendition.display(target);
         } else {
           await rendition.display();
         }
-
-        // Track scroll position
-        rendition.on("relocated", (location: any) => {
-          if (location?.start?.percentage) {
-            const pct = Math.round(location.start.percentage * 100);
-            setCurrentPage(pct);
-            invoke("update_last_page", { documentId, pageNumber: pct }).catch(() => {});
-          }
-        });
+        if (!destroyed) setLoading(false);
 
         // Extract TOC from epubjs navigation
         const nav = book.navigation?.toc ?? [];
@@ -104,7 +123,10 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
           setTocNodes(flat);
         }
       } catch (err) {
-        if (!destroyed) setError(`Failed to load EPUB: ${err}`);
+        if (!destroyed) {
+          setError(`Failed to load EPUB: ${err}`);
+          setLoading(false);
+        }
       }
     };
     load();
@@ -123,6 +145,25 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
     if (!renditionRef.current) return;
     renditionRef.current.themes?.fontSize(`${fontSize}%`);
   }, [fontSize]);
+
+  useEffect(() => {
+    if (!renditionRef.current) return;
+    applyEpubTheme(renditionRef.current, theme);
+  }, [theme]);
+
+  const goPrevious = useCallback(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || atStart) return;
+    const turn = isRtl ? rendition.next() : rendition.prev();
+    Promise.resolve(turn).catch(() => {});
+  }, [atStart, isRtl]);
+
+  const goNext = useCallback(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || atEnd) return;
+    const turn = isRtl ? rendition.prev() : rendition.next();
+    Promise.resolve(turn).catch(() => {});
+  }, [atEnd, isRtl]);
 
   useEffect(() => {
     const refresh = () => setInkRefreshKey((key) => key + 1);
@@ -145,15 +186,13 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
         setInkToolState((state) => ({ ...state, activeTool: "none" }));
         return;
       }
-      if (e.key === "ArrowUp" || e.key === "PageUp") {
+      if (e.key === "ArrowLeft" || e.key === "PageUp") {
         e.preventDefault();
-        const container = containerRef.current;
-        if (container) container.scrollTop -= container.clientHeight * 0.8;
+        goPrevious();
       }
-      if (e.key === "ArrowDown" || e.key === "PageDown") {
+      if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
         e.preventDefault();
-        const container = containerRef.current;
-        if (container) container.scrollTop += container.clientHeight * 0.8;
+        goNext();
       }
       if (e.key === "+" || e.key === "=") { e.preventDefault(); setFontSize((s) => Math.min(200, s + 10)); }
       if (e.key === "-") { e.preventDefault(); setFontSize((s) => Math.max(50, s - 10)); }
@@ -161,7 +200,7 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [theme, setTheme]);
+  }, [goNext, goPrevious, theme, setTheme]);
 
   // Debounced zoom (font size) persistence
   useEffect(() => {
@@ -181,11 +220,11 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
           Back to home
         </button>
         <span className="toolbar-divider" />
+        <button className="icon-button" onClick={goPrevious} disabled={atStart || loading} aria-label="Previous page"><Icon name="prev" /></button>
         <span className="page-control">
-          {currentDocument && (
-            <span>{currentDocument.page_count ? `${currentDocument.page_count} chapters` : "EPUB"}</span>
-          )}
+          <span>{loading ? "Loading" : `${progress}%`}</span>
         </span>
+        <button className="icon-button" onClick={goNext} disabled={atEnd || loading} aria-label="Next page"><Icon name="next" /></button>
         <button className="icon-button" onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Switch theme (Cmd+Shift+T)" aria-label="Toggle theme">
           <Icon name={theme === "light" ? "moon" : "sun"} />
         </button>
@@ -212,11 +251,21 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
         </div>
       ) : (
         <div className="epub-reader-frame">
+          {loading && <div className="epub-loading">Loading EPUB...</div>}
           <div
             ref={setContainerRef}
             className="epub-scroll"
-            style={{ height: "100%", overflow: "auto" }}
           />
+          {!loading && (
+            <>
+              <button className="epub-page-turn epub-page-turn-prev" onClick={goPrevious} disabled={atStart} aria-label="Previous page">
+                <Icon name="prev" />
+              </button>
+              <button className="epub-page-turn epub-page-turn-next" onClick={goNext} disabled={atEnd} aria-label="Next page">
+                <Icon name="next" />
+              </button>
+            </>
+          )}
           <EpubInkOverlay
             documentId={documentId}
             container={containerEl}
@@ -229,4 +278,17 @@ export default function EpubViewer({ documentId, onBackHome, onOpenLibrary, onOp
       )}
     </div>
   );
+}
+
+function applyEpubTheme(rendition: Rendition, theme: "light" | "dark") {
+  const background = theme === "dark" ? "#25211d" : "#f2efe9";
+  const color = theme === "dark" ? "#f5f5f7" : "#1d1d1f";
+  (rendition.themes as any)?.default?.({
+    html: { "overflow-x": "hidden !important", background },
+    body: {
+      "overflow-x": "hidden !important",
+      background,
+      color,
+    },
+  });
 }

@@ -91,9 +91,12 @@ select:focus-visible {
 }
 
 .epub-scroll {
-  max-width: 720px;
+  width: min(100%, 980px);
+  height: 100%;
   margin: 0 auto;
+  overflow: hidden;
 }
 .epub-scroll iframe {
-  width: 100% !important;
+  border: 0;
+  background: var(--reader-bg);
 }
