@@ -1,3 +1,4 @@
+use reqwest::header::ACCEPT_ENCODING;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use tokio_stream::StreamExt;
@@ -73,6 +74,7 @@ pub async fn chat_completion(
         .post(&url)
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header(ACCEPT_ENCODING, "identity")
         .json(&body)
         .timeout(std::time::Duration::from_secs(60))
         .send()
@@ -93,7 +95,10 @@ pub async fn chat_completion(
         return Err(format!("provider_error: HTTP {} - {}", status, error_body));
     }
 
-    let chat_resp: ChatResponse = response.json().await.map_err(|e| format!("parse_error: {}", e))?;
+    let chat_resp: ChatResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("parse_error: {}", e))?;
 
     Ok(chat_resp)
 }
@@ -146,6 +151,7 @@ pub async fn chat_completion_stream(
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .header("Accept", "text/event-stream")
+        .header(ACCEPT_ENCODING, "identity")
         .json(&body)
         .timeout(std::time::Duration::from_secs(120))
         .send()
@@ -171,30 +177,43 @@ pub async fn chat_completion_stream(
     let mut full_text = String::new();
 
     while let Some(chunk_result) = stream.next().await {
-        let chunk = chunk_result.map_err(|e| format!("stream_error: {}", e))?;
+        let chunk = match chunk_result {
+            Ok(chunk) => chunk,
+            Err(_) if !full_text.is_empty() => break,
+            Err(e) => return Err(format!("stream_error: {}", e)),
+        };
         buf.push_str(&String::from_utf8_lossy(&chunk));
 
         // Process complete SSE events from buffer
         loop {
             // Events are separated by \n\n or \r\n\r\n
-            let delim = if let Some(pos) = buf.find("\n\n") {
-                pos
-            } else if let Some(pos) = buf.find("\r\n\r\n") {
-                pos
+            let (delim, delim_len) = if let Some(pos) = buf.find("\r\n\r\n") {
+                (pos, 4)
+            } else if let Some(pos) = buf.find("\n\n") {
+                (pos, 2)
             } else {
                 break;
             };
 
             let event = buf[..delim].to_string();
-            buf = buf[delim + 2..].to_string(); // skip past delimiter
+            buf = buf[delim + delim_len..].to_string();
 
-            if let Some(data) = event.strip_prefix("data: ") {
-                let data = data.trim();
-                if data == "[DONE]" {
-                    return Ok(full_text);
-                }
-                if let Ok(chunk) = serde_json::from_str::<SseChunk>(data) {
-                    if let Some(content) = chunk.choices.first().and_then(|c| c.delta.content.as_deref()) {
+            let data = event
+                .lines()
+                .filter_map(|line| line.strip_prefix("data:").map(str::trim_start))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            if data.trim() == "[DONE]" {
+                return Ok(full_text);
+            }
+            if !data.is_empty() {
+                if let Ok(chunk) = serde_json::from_str::<SseChunk>(&data) {
+                    if let Some(content) = chunk
+                        .choices
+                        .first()
+                        .and_then(|c| c.delta.content.as_deref())
+                    {
                         if !content.is_empty() {
                             on_token(content);
                             full_text.push_str(content);
@@ -228,7 +247,17 @@ pub async fn test_provider(
         },
     ];
 
-    match chat_completion(client, base_url, api_key, model, messages, Some(0.0), Some(10)).await {
+    match chat_completion(
+        client,
+        base_url,
+        api_key,
+        model,
+        messages,
+        Some(0.0),
+        Some(10),
+    )
+    .await
+    {
         Ok(resp) => {
             let model_name = resp.choices.first().map(|c| c.message.content.clone());
             TestResult {
