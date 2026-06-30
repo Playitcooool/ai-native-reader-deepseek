@@ -46,14 +46,27 @@ pub fn extract_epub_content(
         .map_err(|e| e.to_string())?;
     }
 
+    conn.execute(
+        "DELETE FROM toc_nodes WHERE document_id = ?1 AND source = 'epub_nav'",
+        rusqlite::params![document_id],
+    )
+    .map_err(|e| e.to_string())?;
+
     // Save TOC
     for (order, (label, level)) in toc.iter().enumerate() {
         let node_id = Uuid::new_v4().to_string();
-        let start_page = 1; // ponytail: naive — use 1 for all, TOC matching works by title
+        let start_page = ((order + 1).min(total.max(1))) as i64;
+        let end_page = toc
+            .iter()
+            .enumerate()
+            .skip(order + 1)
+            .find(|(_, (_, next_level))| next_level <= level)
+            .map(|(next_order, _)| (next_order as i64).min(total as i64))
+            .unwrap_or(total as i64);
         conn.execute(
             "INSERT INTO toc_nodes (id, document_id, parent_id, title, level, order_index, start_page, end_page, source, confidence, created_at, updated_at)
-             VALUES (?1, ?2, NULL, ?3, ?4, ?5, ?6, NULL, 'epub_nav', 1.0, ?7, ?7)",
-            rusqlite::params![node_id, document_id, label, level, order as i64, start_page, now],
+             VALUES (?1, ?2, NULL, ?3, ?4, ?5, ?6, ?7, 'epub_nav', 1.0, ?8, ?8)",
+            rusqlite::params![node_id, document_id, label, level, order as i64, start_page, end_page, now],
         )
         .map_err(|e| e.to_string())?;
     }

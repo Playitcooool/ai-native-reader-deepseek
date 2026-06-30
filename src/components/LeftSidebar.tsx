@@ -8,6 +8,7 @@ import { useNotesStore } from "../stores/notesStore";
 import type { Annotation } from "../stores/notesStore";
 import type { Document } from "../stores/documentStore";
 import TocSidebar from "../features/toc/TocSidebar";
+import { chapterToPercent } from "../features/epub/epubProgress";
 import { useToast } from "./Toast";
 
 type Tab = "toc" | "notes" | "recent" | "settings";
@@ -180,6 +181,7 @@ export default function LeftSidebar() {
   const {
     documents,
     currentDocument,
+    totalPages,
     tocNodes,
     activeTocNodeId,
     libraryFolder,
@@ -232,7 +234,8 @@ export default function LeftSidebar() {
     const doc = currentDocument;
     if (doc) {
       setCurrentPage(page);
-      invoke("update_last_page", { documentId: doc.id, pageNumber: page }).catch(() => {});
+      const pageNumber = doc.document_type === "epub" ? chapterToPercent(page, doc.page_count ?? totalPages ?? 1) : page;
+      invoke("update_last_page", { documentId: doc.id, pageNumber }).catch(() => {});
     }
   };
 

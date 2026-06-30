@@ -1097,9 +1097,43 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--reader-bg);
   padding: 18px clamp(12px, 4vw, 52px);
+}
+
+.epub-article {
+  width: min(100%, 980px);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 64px);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--reader-bg) 92%, var(--bg-primary) 8%);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.epub-article p {
+  margin: 0 0 1em;
+}
+
+.epub-ink-layer {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 5;
+  width: min(calc(100% - clamp(12px, 4vw, 52px) * 2), 980px);
+  min-height: calc(100% - 36px);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.epub-ink-page {
+  position: relative;
+  margin: 0 auto;
+  pointer-events: none;
 }
 
 .epub-loading {

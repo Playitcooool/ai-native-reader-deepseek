@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { TocNode } from "../features/toc/TocSidebar";
+import { percentToChapter } from "../features/epub/epubProgress";
 import { isTauriRuntime } from "../tauriRuntime";
 
 export interface Document {
@@ -103,7 +104,9 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
     set({
       currentDocument: selected,
-      currentPage: selected?.last_page ?? 1,
+      currentPage: selected?.document_type === 'epub'
+        ? percentToChapter(selected.last_page ?? 0, selected.page_count ?? 1)
+        : selected?.last_page ?? 1,
       zoom: selected?.last_zoom ?? 1.0,
     });
   },

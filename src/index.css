@@ -89,14 +89,3 @@ select:focus-visible {
   --warning-color: #fbbf24;
   --reader-bg: #25211d;
 }
-
-.epub-scroll {
-  width: min(100%, 980px);
-  height: 100%;
-  margin: 0 auto;
-  overflow: hidden;
-}
-.epub-scroll iframe {
-  border: 0;
-  background: var(--reader-bg);
-}
